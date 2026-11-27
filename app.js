@@ -78,6 +78,7 @@ function render(){
   let previous=''
   for(const e of filtered){
     const b=button('',()=>show(e),'record')
+    b.dataset.entryId=e.id
     const info=node('div',undefined,'entry')
     info.append(node('h2',e.title),node('div',[e.place,e.tag].filter(Boolean).join(' · '),'meta'))
     if(e.photos.length)info.append(picture(e.photos[0]));else info.append(node('div',e.body,'snippet'))
@@ -106,7 +107,19 @@ function compose(e){
   current=e;photos=[...(e?.photos||[])];form.reset()
   for(const n of ['title','body','date','place','tag'])field(n).value=e?.[n]??({date:day||today(),tag:'日常'}[n]||'')
   $('editorTitle').textContent=e?'编辑记录':'添加记录';$('error').textContent=''
-  preview();$('editor').showModal()
+  preview()
+  const editor=$('editor')
+  editor.showModal()
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+    const anchor=$(e?'heading':'add').getBoundingClientRect()
+    const box=editor.getBoundingClientRect()
+    const dx=anchor.x+anchor.width/2-box.x-box.width/2
+    const dy=anchor.y+anchor.height/2-box.y-box.height/2
+    editor.animate([
+      {transform:'translate('+dx+'px,'+dy+'px) scale(.09)',borderRadius:'60px',opacity:.2},
+      {transform:'translate(0,0) scale(1)',borderRadius:'15px',opacity:1}
+    ],{duration:340,easing:'cubic-bezier(.22,.9,.28,1)'})
+  }
 }
 $('files').onchange=e=>{photos.push(...e.target.files);e.target.value='';preview()}
 $('editor').onclose=()=>{
@@ -119,8 +132,11 @@ form.onsubmit=async event=>{
   if(!data.title){$('error').textContent='请填写标题。';field('title').focus();return}
   const save=form.querySelector('.save');save.disabled=true
   try{
-    await access('readwrite',s=>s.put({...data,id:current?.id||crypto.randomUUID(),photos:[...photos]}))
+    const id=current?.id||crypto.randomUUID()
+    await access('readwrite',s=>s.put({...data,id,photos:[...photos]}))
     month=data.date.slice(0,7);calendar=false;reset();$('editor').close();await refresh()
+    const saved=document.querySelector('[data-entry-id="'+CSS.escape(id)+'"]')
+    saved?.scrollIntoView({block:'nearest'});saved?.classList.add('just-saved')
   }catch{$('error').textContent='保存失败，请检查浏览器剩余空间后重试。'}
   finally{save.disabled=false}
 }

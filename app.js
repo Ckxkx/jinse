@@ -33,7 +33,7 @@ try{month=localStorage.getItem('jinse-month')||month}catch{}
 const urls=new Map()
 function picture(photo){
   const img=node('img');img.alt='记录配图';img.loading='lazy'
-  if(typeof photo==='string')img.src=photo
+  if(typeof photo==='string')img.src=({'./sea.png':'./coast.jpg','./cafe.png':'./coffee.jpg'})[photo] || photo
   else {if(!urls.has(photo))urls.set(photo,URL.createObjectURL(photo));img.src=urls.get(photo)}
   return img
 }
@@ -48,10 +48,19 @@ function render(){
   $('month').value=month
   try{localStorage.setItem('jinse-month',month)}catch{}
   const monthly=entries.filter(e=>e.date.startsWith(month+'-'))
-  $('total').textContent='本月 '+monthly.length+' 篇'
+  const [year,number]=month.split('-')
+  $('monthName').textContent=year+' 年 '+Number(number)+' 月'
+  $('total').textContent=monthly.length+' 篇'
+  const months=[...new Set([month,...entries.map(e=>e.date.slice(0,7))])].sort().reverse()
+  $('archives').replaceChildren(...months.map(key=>{
+    const [y,m]=key.split('-')
+    const link=button(y+' 年 '+Number(m)+' 月',()=>{month=key;day='';render()},month===key?'active':'')
+    link.append(node('span',String(entries.filter(e=>e.date.startsWith(key)).length)))
+    return link
+  }))
   $('heading').textContent=calendar?'手记日历':'我的时间线'
   $('calendar').classList.toggle('on',calendar);$('timeline').classList.toggle('on',!calendar)
-  $('tags').replaceChildren(...['全部','旅行','日常'].map(t=>button(t,()=>{tag=t;render()},t===tag?'on':'')))
+  $('tags').replaceChildren(...['全部','旅行','日常'].map(t=>{const b=button(t,()=>{tag=t;render()},t===tag?'on':'');b.setAttribute('aria-pressed',String(t===tag));return b}))
   const grid=$('grid');grid.hidden=!calendar;grid.replaceChildren()
   if(calendar){
     const [y,m]=month.split('-').map(Number)
@@ -72,7 +81,9 @@ function render(){
     const info=node('div',undefined,'entry')
     info.append(node('h2',e.title),node('div',[e.place,e.tag].filter(Boolean).join(' · '),'meta'))
     if(e.photos.length)info.append(picture(e.photos[0]));else info.append(node('div',e.body,'snippet'))
-    b.append(node('span',previous===e.date?'':e.date.slice(-2),'day'),info);rows.append(b);previous=e.date
+    const stamp=node('span',previous===e.date?'':e.date.slice(-2),'day')
+    if(previous!==e.date)stamp.append(node('small',new Date(e.date+'T12:00:00').toLocaleDateString('zh-CN',{weekday:'long'})))
+    b.append(stamp,info);rows.append(b);previous=e.date
   }
   if(!filtered.length){
     const box=node('div',undefined,'empty')
@@ -122,7 +133,7 @@ $('close').onclick=()=>$('detail').close()
 $('cancel').onclick=()=>$('editor').close()
 $('add').onclick=()=>compose(null)
 $('month').onchange=e=>{if(e.target.value){month=e.target.value;day='';render()}}
-$('find').onclick=()=>{const q=$('query');q.hidden=!q.hidden;if(q.hidden){q.value='';render()}else q.focus()}
+$('find').onclick=()=>{const q=$('query');q.hidden=!q.hidden;$('find').setAttribute('aria-expanded',String(!q.hidden));if(q.hidden){q.value='';render()}else q.focus()}
 $('query').oninput=render
 $('timeline').onclick=()=>{calendar=false;day='';render()}
 $('calendar').onclick=()=>{calendar=true;render()}

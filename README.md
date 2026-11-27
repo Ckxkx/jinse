@@ -1,14 +1,44 @@
-# 锦瑟 Jinse
-锦瑟无端五十弦，一弦一柱思华年。
-时间线 App。
+<p align="center"><img src="App/Assets.xcassets/AppIcon.appiconset/image.png" width="88" height="88" alt="锦瑟应用图标"></p>
+<h1 align="center">锦瑟 · 我的时间线</h1>
+<p align="center">锦瑟无端五十弦，一弦一柱思华年。</p>
+<p align="center">用文字、照片和地点，记一本可以按月翻阅的生活手记。</p>
+<p align="center"><a href="https://ckxkx.github.io/jinse/">打开网页版</a> · <a href="https://github.com/Ckxkx/jinse/actions/runs/46038010247/artifacts/15218991618">下载 iPhone 版</a> · <a href="https://github.com/Ckxkx/jinse/actions/workflows/sidestore.yml">构建 IPA</a></p>
 
-## 我的时间线
+## 翻阅手记
 
-适用于 iOS 17 及以上的 iPhone。首次打开显示 2026 年 10 月的两条记录，海岸和咖啡馆配图是随工程分发的原创插画。点月份切换时间，点加号记下标题即可保存。日历圆点表示当天有记录。照片保存在应用私有目录。卸载应用会移除本机数据。
+从十月的厦门海岸翻到杭州的周末咖啡馆。首次打开有两篇带原创插画的示例，你可以编辑或删除，再从自己的第一篇开始。
 
-## 在网页查看测试
+| 想做什么 | 怎样操作 |
+| --- | --- |
+| 留下片刻 | 点中央加号，写个标题即可保存。也可以附上正文、照片、地点和标签。 |
+| 补记往事 | 保存前选好日期，时间线会翻到记录所在的月份。 |
+| 找回一篇 | 按月份和标签筛选，或搜索标题、正文、地点。日历中的圆点表示当天有记录。 |
+| 整理记录 | 打开详情后编辑、移除照片或删除整篇。删除需再次确认。 |
 
-打开仓库的 Actions → iPhone CI。推送到 main 和 Pull Request 会运行共享 Timeline scheme。展开选择设备步骤可看到 Xcode、系统和 iPhone 型号。测试包含新增、过去日期排序、修改、删除、重开数据库、删除后不再生成示例和从首页新增记录。运行摘要下的 simulator-results 包含构建日志及生成的 xcresult。
+## 选择使用方式
+
+| | 网页版 | iPhone 原生版 |
+| --- | --- | --- |
+| 入口 | [GitHub Pages](https://ckxkx.github.io/jinse/) | iOS 17 或更高版本，可用 SideStore 安装 |
+| 存储 | 当前浏览器的 IndexedDB，首次加载并完成离线缓存后可断网使用 | SwiftData 数据库和应用私有照片目录 |
+| 工程 | [gh-pages 分支](https://github.com/Ckxkx/jinse/tree/gh-pages)，原生 HTML、CSS、JavaScript | [main 分支](https://github.com/Ckxkx/jinse/tree/main)，SwiftUI、SwiftData、PhotosPicker |
+
+两个版本都无需登录，记录和选取的照片只保存在当前设备。网页版与原生版各自保存手记。清除网站数据、结束无痕会话或卸载原生应用可能移除相应记录。
+
+### 用 SideStore 安装
+
+1. 在 iPhone 上登录 GitHub，下载页面顶部的 IPA 压缩包。
+2. 在「文件」中轻点 ZIP 解压，得到 **Timeline-unsigned.ipa**。
+3. 打开已配置好的 SideStore，进入 **My Apps → ＋**，选择 IPA 完成签名和安装。
+
+如下载附件已过期，打开 [SideStore 构建工作流](https://github.com/Ckxkx/jinse/actions/workflows/sidestore.yml)，点击 **Run workflow**。完成后从运行摘要的 **Artifacts → Timeline-SideStore** 下载。此方式无需在仓库配置 Apple 签名材料。
+
+## 构建与测试
+
+[iPhone CI](https://github.com/Ckxkx/jinse/actions/workflows/ci.yml) 在推送到 main 和提交 Pull Request 时运行。macOS runner 选择已安装的 Xcode 26 和可用 iPhone 模拟器，验证新增、旧日期排序、编辑、删除、重开数据库，以及从首页新增记录的完整操作。运行摘要的 `simulator-results` 附件提供构建日志和测试结果。
+
+<details>
+<summary><strong>通过 TestFlight 分发 · 无 Mac 完整操作指南</strong></summary>
 
 ## 在 Windows 准备签名
 
@@ -61,3 +91,9 @@
 3. **Actions 上传成功**表示 Apple 已接收上传。到 App Store Connect → Apps → 你的 App → TestFlight 查看构建号。**Apple 处理完成**后才可选用该构建；如提示出口合规或测试资料待填，请据实补全。处理失败时查看 Apple 发给账号的邮件。
 4. **测试员可安装**需要将构建分配给群组。本人已有该 App 的 App Store Connect 访问权限时，在 TestFlight → Internal Testing 建组，添加本人并添加构建。其他用户可在 External Testing 建组，填测试说明、添加构建并按 Apple 要求提交 Beta App Review，获准后邀请邮箱。
 5. iPhone 从 App Store 安装 TestFlight，打开邀请邮件点 View in TestFlight，接受并点「安装」。确认版本和构建号与发布运行一致。
+
+</details>
+
+## 许可
+
+**暂不开源。** © 2026 Ckxkx，保留所有权利。本项目目前未授予开源许可。如需复用代码、美术资源或再分发，请事先取得权利人的书面许可。

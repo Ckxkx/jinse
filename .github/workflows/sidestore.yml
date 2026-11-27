@@ -1,0 +1,38 @@
+name: SideStore 未签名 IPA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/sidestore.yml']
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: 编译 iPhone Release
+        run: |
+          bash Scripts/xcode.sh
+          xcodebuild -version
+          xcodebuild build -project Timeline.xcodeproj -scheme Timeline -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/build" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+      - name: 打包并校验 IPA
+        run: |
+          set -eu
+          mkdir -p Payload
+          ditto "$RUNNER_TEMP/build/Build/Products/Release-iphoneos/Timeline.app" Payload/Timeline.app
+          app=Payload/Timeline.app
+          test "$(plutil -extract DTPlatformName raw "$app/Info.plist")" = iphoneos
+          exe="$app/$(plutil -extract CFBundleExecutable raw "$app/Info.plist")"
+          lipo -verify_arch arm64 "$exe"
+          if codesign -d "$exe" 2>/dev/null; then codesign --remove-signature "$exe"; fi
+          test ! -e "$app/embedded.mobileprovision"
+          test ! -e "$app/_CodeSignature"
+          /usr/bin/zip -qry Timeline-unsigned.ipa Payload
+          unzip -tq Timeline-unsigned.ipa
+          shasum -a 256 Timeline-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Timeline-SideStore
+          path: Timeline-unsigned.ipa
+          if-no-files-found: error

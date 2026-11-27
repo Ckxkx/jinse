@@ -14,10 +14,15 @@ struct Editor: View {
     @Environment(\.modelContext) private var context
     let entry: Entry?
     let saved: (Date) -> Void
-    @State private var title: String, note: String, place: String, tag: String
-    @State private var date: Date, photos: [DraftPhoto]
+    @State private var title: String
+    @State private var note: String
+    @State private var place: String
+    @State private var tag: String
+    @State private var date: Date
+    @State private var photos: [DraftPhoto]
     @State private var selection: [PhotosPickerItem] = []
-    @State private var loading = false, error = ""
+    @State private var loading = false
+    @State private var error = ""
     init(entry: Entry?, saved: @escaping (Date) -> Void) {
         self.entry = entry
         self.saved = saved
@@ -101,7 +106,9 @@ struct Detail: View {
     @Environment(\.modelContext) private var context
     let entry: Entry
     let reveal: (Date) -> Void
-    @State private var editing = false, deleting = false, failed = false
+    @State private var editing = false
+    @State private var deleting = false
+    @State private var failed = false
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:16) {

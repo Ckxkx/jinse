@@ -10,8 +10,13 @@ struct Home: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Entry.date, order: .reverse) private var entries: [Entry]
     @AppStorage("month") private var stamp = Journal.october(1).timeIntervalSince1970
-    @State private var tag = "全部", query = "", error = ""
-    @State private var searching = false, adding = false, calendar = false, picking = false
+    @State private var tag = "全部"
+    @State private var query = ""
+    @State private var error = ""
+    @State private var searching = false
+    @State private var adding = false
+    @State private var calendar = false
+    @State private var picking = false
     @State private var day: Date?
     private let cal = Journal.cal
     var month: Date { Date(timeIntervalSince1970: stamp) }
@@ -49,7 +54,7 @@ struct Home: View {
                     if visible.isEmpty {
                         ContentUnavailableView {
                             Label(monthly.isEmpty ? "这个月还没有记录" : "没有匹配的记录", systemImage: "book")
-                        } actions: {
+                        } description: { EmptyView() } actions: {
                             Button(monthly.isEmpty ? "添加记录" : "清除条件") { if monthly.isEmpty { adding = true } else { reset() } }
                         }
                     }

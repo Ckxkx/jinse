@@ -24,11 +24,12 @@ jobs:
           app=Payload/Timeline.app
           test "$(plutil -extract DTPlatformName raw "$app/Info.plist")" = iphoneos
           exe="$app/$(plutil -extract CFBundleExecutable raw "$app/Info.plist")"
-          lipo -verify_arch arm64 "$exe"
+          lipo "$exe" -verify_arch arm64
           if codesign -d "$exe" 2>/dev/null; then codesign --remove-signature "$exe"; fi
           test ! -e "$app/embedded.mobileprovision"
           test ! -e "$app/_CodeSignature"
-          /usr/bin/zip -qry Timeline-unsigned.ipa Payload
+          zip -qX -D Timeline-unsigned.ipa "$app/Info.plist"
+          zip -qrXy Timeline-unsigned.ipa Payload -x "$app/Info.plist"
           unzip -tq Timeline-unsigned.ipa
           shasum -a 256 Timeline-unsigned.ipa
       - uses: actions/upload-artifact@v4

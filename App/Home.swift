@@ -89,7 +89,7 @@ struct Home:View {
                     }
                 }
             }.background(paper).overlay(alignment:.bottomTrailing) {
-                if book.ready { Button {create=true} label:{Image(systemName:"plus").font(.title2).frame(width:52,height:52).background(accent,in:Circle()).foregroundStyle(.white)}.accessibilityLabel("添加记录").padding() }
+                if book.ready { Button {create=true} label:{Image(systemName:"plus").font(.title2).frame(width:52,height:52).background(accent,in:Circle()).foregroundStyle(paper)}.accessibilityLabel("添加记录").padding() }
             }
     }
 }

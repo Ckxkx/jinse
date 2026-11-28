@@ -101,7 +101,9 @@ function render(){
     b.dataset.entryId=e.id
     const info=node('div',undefined,'entry')
     const excerpt=e.body.trim()
-    const meta=node('span',[e.place,statusOf(e),e.tag].filter(Boolean).join(' · '),'meta')
+    const meta=node('span',undefined,'meta')
+    const state=statusOf(e)
+    meta.append(node('small',({'已完成':'✓','未完成':'○','暂时挂起':'Ⅱ'}[state]||'')+' '+state,'event-state'),document.createTextNode(' '+[e.place,e.tag].filter(Boolean).join(' · ')))
     info.append(node('h2',e.title))
     if(e.photos.length){
       info.classList.add('with-photo')

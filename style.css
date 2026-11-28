@@ -134,3 +134,4 @@ input,textarea,select{background:var(--tile);color:var(--ink)}
 #coverImage,.topic-banner:after{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2}
 .topic-banner:after{content:"";z-index:-1;background:linear-gradient(transparent,#000b)}
 .topic-brand{position:absolute;left:18px;bottom:15px}.topic-brand img{width:50px;height:50px;border-radius:12px}.topic-brand h2{margin:3px 0 0;font-size:24px}.cover-picker{position:absolute;bottom:18px;right:14px;border-radius:20px;padding:6px 13px;color:white;background:#0009;font-size:13px;overflow:hidden}.cover-picker input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+.event-state{display:inline-block;padding:1px 7px;border-radius:999px;background:var(--tile);color:var(--ink);font:500 11px/1.6 system-ui}

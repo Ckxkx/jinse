@@ -83,9 +83,12 @@ function render(){
     const excerpt=e.body.trim()
     const meta=node('span',[e.place,e.tag].filter(Boolean).join(' · '),'meta')
     info.append(node('h2',e.title))
-    if(e.photos.length)info.append(picture(e.photos[0]))
-    else if(excerpt)info.append(node('div',excerpt,'snippet'))
-    else info.classList.add('title-only')
+    if(e.photos.length){
+      info.classList.add('with-photo')
+      info.append(picture(e.photos[0]))
+    }
+    if(excerpt)info.append(node('div',excerpt,'snippet'))
+    else if(!e.photos.length)info.classList.add('title-only')
     info.append(meta)
     if(e.date===previous)b.classList.add('same-day')
     const stamp=node('span',previous===e.date?'':e.date.slice(-2),'day')

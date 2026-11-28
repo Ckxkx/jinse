@@ -1,164 +1,118 @@
-import SwiftData
 import SwiftUI
+import SwiftData
 
-let paper = Color.white
-let ink = Color(white: 23/255)
-let pine = Color(red: 50/255, green: 89/255, blue: 78/255)
-func song(_ size: CGFloat) -> Font { .system(size: size, weight: .semibold) }
-
-struct Home: View {
-    @Environment(\.modelContext) private var context
-    @Query(sort: \Entry.date, order: .reverse) private var entries: [Entry]
-    @AppStorage("month") private var stamp = Journal.october(1).timeIntervalSince1970
-    @State private var tag = "全部"
-    @State private var query = ""
-    @State private var error = ""
-    @State private var searching = false
-    @State private var adding = false
-    @State private var calendar = false
-    @State private var picking = false
-    @State private var day: Date?
-    @State private var overview = true
-    private let cal = Journal.cal
-    var month: Date { Date(timeIntervalSince1970: stamp) }
-    var monthly: [Entry] { entries.filter { cal.isDate($0.date, equalTo: month, toGranularity: .month) } }
-    var visible: [Entry] {
-        monthly.filter { e in
-            (tag == "全部" || e.tag == tag) && (query.isEmpty || [e.title,e.bodyText,e.place].contains { $0.localizedCaseInsensitiveContains(query) }) && (day.map { cal.isDate($0, inSameDayAs: e.date) } ?? true)
+let accent=Color("JournalAccent")
+let paper=Color("JournalPaper")
+struct Home:View {
+    @Environment(\.modelContext) var context
+    @StateObject private var book=Library(root:CommandLine.arguments.contains("--ui-test") ? URL.temporaryDirectory.appending(path:UUID().uuidString):URL.applicationSupportDirectory.appending(path:"JournalV2"))
+    @StateObject private var sync=SyncController()
+    @State private var query=""
+    @State private var scope:StateTag?
+    @State private var search=false
+    @State private var settings=false
+    @State private var create=false
+    @State private var importing=false
+    @State private var selected:Moment?
+    @State private var asset:Attachment?
+    @Environment(\.scenePhase) var phase
+    @ScaledMetric(relativeTo:.caption) var column:CGFloat=62
+    var shown:[Moment] { book.items.filter { !$0.deleted && (scope==nil || scope==$0.status) && (query.isEmpty || [$0.title,$0.body,$0.place].contains { $0.localizedCaseInsensitiveContains(query) }) } }
+    var body:some View {
+        NavigationStack {
+            VStack(spacing:0) {
+                HStack {
+                    Text("我的时间线").font(.title2.bold())
+                    Spacer()
+                    Button { search.toggle(); if !search { query="" } } label:{Image(systemName:"magnifyingglass")}.accessibilityLabel("搜索")
+                    Menu { Button("全部状态"){scope=nil};ForEach(StateTag.allCases,id:\.self){ s in Button(s.rawValue){scope=s} } } label:{Image(systemName:scope==nil ? "line.3.horizontal.decrease.circle":"line.3.horizontal.decrease.circle.fill")}.accessibilityLabel("筛选状态")
+                    Button {settings=true} label:{Image(systemName:"gearshape")}.accessibilityLabel("设置")
+                }.buttonStyle(.borderless).padding()
+                if search { TextField("搜索标题、正文或地点",text:$query).textFieldStyle(.roundedBorder).padding(.horizontal) }
+                if let scope { Button("清除筛选 · "+scope.rawValue){self.scope=nil}.font(.caption).padding(6) }
+                Divider()
+                if !book.ready { ProgressView("正在读取手记").frame(maxWidth:.infinity,maxHeight:.infinity) }
+                else if shown.isEmpty {
+                    ContentUnavailableView {
+                        Label(book.items.allSatisfy(\.deleted) ? "从此刻开始" : "没有匹配的记录",systemImage:"book.pages")
+                    } description:{ Text(book.items.allSatisfy(\.deleted) ? "记下今天做过的事，以及想留下的片刻。" : "试试其他关键词或状态。") } actions:{
+                        if book.items.allSatisfy(\.deleted) {
+                            Button("写下第一条记录"){create=true}
+                            Button("导入已有数据"){importing=true;settings=true}
+                        } else { Button("清除条件"){query="";scope=nil} }
+                    }
+                } else {
+                    let rows=shown
+                    ScrollView {
+                        LazyVStack(spacing:0) {
+                            ForEach(Array(rows.enumerated()),id:\.element.recordIdentity) { index,item in
+                                let first=index==0 || !Calendar.current.isDate(rows[index-1].date,inSameDayAs:item.date)
+                                TimelineRow(item:item,first:first,firstRow:index==0,lastRow:index==rows.count-1,
+                                            nextDay:index+1<rows.count && !Calendar.current.isDate(rows[index+1].date,inSameDayAs:item.date),
+                                            column:column,dir:book.media,open:{selected=item},preview:{asset=$0},
+                                            change:{ state in book.change(item){$0.status=state} })
+                            }
+                        }.padding(.horizontal,14).padding(.top,20).padding(.bottom,90)
+                    }
+                }
+            }.background(paper).overlay(alignment:.bottomTrailing) {
+                if book.ready { Button {create=true} label:{Image(systemName:"plus").font(.title2).frame(width:52,height:52).background(accent,in:Circle()).foregroundStyle(.white)}.accessibilityLabel("添加记录").padding() }
+            }
+            .sheet(isPresented:$create){Composer(initial:nil,book:book)}
+            .sheet(item:$selected){item in Detail(item:item,book:book)}
+            .sheet(item:$asset){Viewer(asset:$0,dir:book.media)}
+            .sheet(isPresented:$settings,onDismiss:{importing=false}){Settings(book:book,sync:sync,importOnOpen:importing)}
+            .alert("操作未完成",isPresented:Binding(get:{!book.error.isEmpty},set:{_ in book.error=""})){Button("好") {}} message:{Text(book.error)}
+        }.tint(accent).task{await book.start(context);sync.schedule(book)}
+        .onChange(of:book.items){_,_ in sync.schedule(book)}
+        .onChange(of:phase){_,new in if new == .active {sync.schedule(book)} }
+    }
+}
+extension Moment { var recordIdentity:UUID { id } }
+struct TimelineRow:View {
+    let item:Moment
+    let first:Bool, firstRow:Bool,lastRow:Bool,nextDay:Bool
+    let column:CGFloat,dir:URL
+    let open:()->Void,preview:(Attachment)->Void,change:(StateTag)->Void
+    @ScaledMetric(relativeTo:.headline) var axis:CGFloat=12
+    @Environment(\.dynamicTypeSize) var type
+    var body:some View {
+        HStack(alignment:.top,spacing:0) {
+            VStack(alignment:.trailing,spacing:3) {
+                Text(item.date,format:.dateTime.hour(.twoDigits(amPM:.omitted)).minute()).font(.subheadline.weight(.medium)).monospacedDigit()
+                if first {
+                    if !Calendar.current.isDate(item.date,equalTo:Date(),toGranularity:.year){Text(item.date,format:.dateTime.year())}
+                    Text(item.date,format:.dateTime.month().day())
+                    Text(item.date,format:.dateTime.weekday(.abbreviated))
+                }
+            }.font(.caption).foregroundStyle(.secondary).frame(width:min(column,105),alignment:.trailing)
+            Color.clear.frame(width:22)
+            VStack(alignment:.leading,spacing:7) {
+                ViewThatFits(in:.horizontal) {
+                    HStack(alignment:.firstTextBaseline){title.fixedSize();status.fixedSize()}
+                    VStack(alignment:.leading,spacing:5){title;status}
+                }
+                if !item.title.isEmpty && !item.body.isEmpty { Button(action:open){Text(item.body).font(.body).multilineTextAlignment(.leading)}.buttonStyle(.plain) }
+                if !item.media.isEmpty { Gallery(media:item.media,dir:dir,preview:preview) }
+            }.frame(maxWidth:.infinity,alignment:.leading)
+        }.padding(.bottom:lastRow ? 0 : (nextDay ? 32:16))
+        .background(alignment:.topLeading){
+            GeometryReader { g in
+                Path { p in
+                    let x=min(column,105)+11
+                    p.move(to:CGPoint(x:x,y:firstRow ? axis:0));p.addLine(to:CGPoint(x:x,y:lastRow ? axis:g.size.height))
+                }.stroke(Color("JournalRule"),lineWidth:1)
+                Circle().fill(accent).frame(width:7,height:7).position(x:min(column,105)+11,y:axis)
+            }
         }
     }
-    func reset() { tag = "全部"; query = ""; day = nil }
-    func reveal(_ date: Date) { stamp = date.timeIntervalSince1970; reset(); calendar = false; searching = false; overview = false }
-    var body: some View {
-        NavigationStack {
-            Group {
-            if overview { landing } else {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Button { overview = true } label: { Label("首页",systemImage:"chevron.left") }
-                    Spacer()
-                    Text(calendar ? "日历" : "时间线").font(.headline)
-                    Spacer()
-                    Button { searching.toggle(); query = "" } label: { Image(systemName: "magnifyingglass") }.accessibilityLabel("搜索")
-                }
-                if searching { TextField("搜索标题、正文或地点", text: $query).textFieldStyle(.roundedBorder) }
-                HStack {
-                    Button { picking = true } label: {
-                        Text(month.formatted(.dateTime.year().month().locale(Locale(identifier:"zh_CN"))))
-                        Image(systemName:"chevron.down").font(.caption)
-                    }
-                    Spacer()
-                    ForEach(["全部","旅行","日常"], id: \.self) { item in
-                        Button(item) { tag = item }.font(.subheadline).foregroundStyle(tag == item ? pine : .secondary)
-                            .underline(tag == item)
-                    }
-                }
-                Divider()
-                ScrollView {
-                    if calendar { calendarGrid }
-                    if visible.isEmpty {
-                        ContentUnavailableView {
-                            Label(monthly.isEmpty ? "这个月还没有记录" : "没有匹配的记录", systemImage: "book")
-                        } description: { EmptyView() } actions: {
-                            if monthly.isEmpty { Text("点右下角加号，写下第一件事。").font(.footnote) } else { Button("清除条件") { reset() } }
-                        }
-                    }
-                    LazyVStack(spacing: 0) {
-                        ForEach(visible) { e in
-                            let first = visible.first { cal.isDate($0.date, inSameDayAs: e.date) }
-                            NavigationLink {
-                                Detail(entry: e, reveal: reveal)
-                            } label: {
-                                HStack(alignment: .top, spacing: 12) {
-                                    Text(first == e ? String(format:"%02d",cal.component(.day, from: e.date)) : "").font(song(31)).frame(width:44)
-                                    Rectangle().fill(pine.opacity(0.24)).frame(width:1)
-                                        .overlay(alignment:.top) { Circle().fill(pine).frame(width:8,height:8).offset(y:12) }
-                                    VStack(alignment:.leading, spacing:8) {
-                                        Text(e.title).font(.headline)
-                                        if !e.bodyText.isEmpty { Text(e.bodyText).lineLimit(2).font(.subheadline).foregroundStyle(.secondary) }
-                                        Text([e.place,e.tag].filter { !$0.isEmpty }.joined(separator:" · ")).font(.caption).foregroundStyle(.secondary)
-                                        Divider().padding(.vertical,8)
-                                    }.frame(maxWidth:.infinity,alignment:.leading)
-                                    if let name=e.photos.first, let photo=Journal.image(name) { Image(uiImage:photo).resizable().scaledToFill().frame(width:52,height:52).clipped().cornerRadius(6) }
-                                }
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                }
-            }.padding(.horizontal,20).padding(.top,12).background(paper)
-            .safeAreaInset(edge:.bottom) {
-                VStack(alignment:.trailing,spacing:4) {
-                    Button { adding = true } label: {
-                        Image(systemName:"plus").font(.title2.weight(.medium)).frame(width:52,height:52)
-                            .background(pine,in:Circle()).foregroundStyle(.white)
-                    }.accessibilityLabel("添加记录").padding(.trailing,18)
-                    HStack {
-                        Button("时间线") { calendar = false; day = nil }
-                        Spacer()
-                        Button("日历") { calendar = true }
-                    }.padding(.horizontal,40).padding(.vertical,6)
-                }.background(paper)
-            }
-            }
-            }
-            .sheet(isPresented:$adding) { Editor(entry:nil, saved:reveal) }
-            .sheet(isPresented:$picking) {
-                VStack {
-                    DatePicker("选择月份",selection:Binding(get:{month},set:{stamp = $0.timeIntervalSince1970; day = nil}),displayedComponents:.date).datePickerStyle(.wheel)
-                    Button("完成") { picking = false }
-                }.presentationDetents([.medium])
-            }.task { do { try Journal.seed(context) } catch { self.error = "示例初始化失败，请重新打开应用。" } }
-            .alert("读取失败",isPresented:Binding(get:{!error.isEmpty},set:{_ in error = ""})) { Button("好") {} } message: { Text(error) }
-        }.foregroundStyle(ink).tint(pine).preferredColorScheme(.light)
-    }
-    var landing: some View {
-        ScrollView {
-            VStack(alignment:.leading,spacing:24) {
-                Text("锦瑟手记").font(.largeTitle.bold())
-                Button { reset(); calendar = false; overview = false } label: {
-                    HStack {
-                        VStack(alignment:.leading,spacing:6) {
-                            Text("我的时间线").font(.title2.bold())
-                            Text("共 \(entries.count) 篇手记").font(.subheadline)
-                        }
-                        Spacer()
-                        Image(systemName:"arrow.right")
-                    }.padding(22).background(pine,in:RoundedRectangle(cornerRadius:12)).foregroundStyle(.white)
-                }.accessibilityIdentifier("openTimeline")
-                Text("最近事件").font(.headline)
-                if entries.isEmpty { Text("进入时间线，点右下角加号添加事件。").foregroundStyle(.secondary) }
-                ForEach(Array(entries.prefix(5))) { entry in
-                    NavigationLink {
-                        Detail(entry:entry,reveal:reveal)
-                    } label: {
-                        HStack {
-                            VStack(alignment:.leading,spacing:4) {
-                                Text(entry.title).font(.headline)
-                                Text(entry.date,style:.date).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName:"chevron.right").font(.caption).foregroundStyle(.secondary)
-                        }.contentShape(Rectangle())
-                    }.buttonStyle(.plain)
-                    Divider()
-                }
-            }.padding(22).frame(maxWidth:.infinity,alignment:.leading)
-        }.background(paper)
-    }
-    var calendarGrid: some View {
-        let start = cal.dateInterval(of:.month,for:month)!.start
-        let offset = cal.component(.weekday,from:start)-1
-        let count = cal.range(of:.day,in:.month,for:start)!.count
-        return LazyVGrid(columns:Array(repeating:GridItem(.flexible()),count:7)) {
-            ForEach(Array("日一二三四五六"),id:\.self) { Text(String($0)).font(.caption) }
-            ForEach(0..<(count+offset),id:\.self) { index in
-                if index < offset { Color.clear } else {
-                    let date = cal.date(byAdding:.day,value:index-offset,to:start)!
-                    Button { day = date } label: {
-                        VStack { Text("\(index-offset+1)"); Circle().fill(monthly.contains { cal.isDate($0.date,inSameDayAs:date) } ? pine : .clear).frame(width:5,height:5) }
-                    }.background(day.map { cal.isDate($0,inSameDayAs:date) } == true ? pine.opacity(0.15) : .clear)
-                }
-            }
-        }.padding(.bottom)
+    var title:some View { Button(action:open){Text(item.heading).font(.headline).multilineTextAlignment(.leading)}.buttonStyle(.plain) }
+    var status:some View { Menu { ForEach(StateTag.allCases,id:\.self){s in Button {change(s)} label:{Label(s.rawValue,systemImage:s.icon)} } } label:{Label(item.status.rawValue,systemImage:item.status.icon).font(.caption).foregroundStyle(accent)} }
+}
+struct Gallery:View {
+    let media:[Attachment],dir:URL,preview:(Attachment)->Void
+    var body:some View {
+        if media.count==1,let a=media.first {Button {preview(a)} label:{Tile(asset:a,dir:dir).aspectRatio(CGFloat(a.ratio),contentMode:.fit)}.buttonStyle(.plain)}
+        else { LazyVGrid(columns:[GridItem(.adaptive(minimum:76))],spacing:5){ForEach(media){a in Button {preview(a)} label:{Tile(asset:a,dir:dir).aspectRatio(1,contentMode:.fit)}.buttonStyle(.plain)}} }
     }
 }

@@ -113,7 +113,7 @@
 				<key>GENERATE_INFOPLIST_FILE</key>
 				<string>YES</string>
 				<key>MARKETING_VERSION</key>
-				<string>1.0</string>
+				<string>2.0</string>
 				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
 				<string>org.jinse.timeline.uitests</string>
 				<key>PRODUCT_NAME</key>
@@ -149,7 +149,7 @@
 				<key>GENERATE_INFOPLIST_FILE</key>
 				<string>YES</string>
 				<key>MARKETING_VERSION</key>
-				<string>1.0</string>
+				<string>2.0</string>
 				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
 				<string>org.jinse.timeline.tests</string>
 				<key>PRODUCT_NAME</key>
@@ -217,7 +217,7 @@
 				<key>GENERATE_INFOPLIST_FILE</key>
 				<string>YES</string>
 				<key>MARKETING_VERSION</key>
-				<string>1.0</string>
+				<string>2.0</string>
 				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
 				<string>org.jinse.timeline.uitests</string>
 				<key>PRODUCT_NAME</key>
@@ -284,7 +284,7 @@
 				<key>INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone</key>
 				<string>UIInterfaceOrientationPortrait</string>
 				<key>MARKETING_VERSION</key>
-				<string>1.0</string>
+				<string>2.0</string>
 				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
 				<string>org.jinse.timeline</string>
 				<key>PRODUCT_NAME</key>
@@ -548,7 +548,7 @@
 				<key>INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone</key>
 				<string>UIInterfaceOrientationPortrait</string>
 				<key>MARKETING_VERSION</key>
-				<string>1.0</string>
+				<string>2.0</string>
 				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
 				<string>org.jinse.timeline</string>
 				<key>PRODUCT_NAME</key>
@@ -634,7 +634,7 @@
 				<key>GENERATE_INFOPLIST_FILE</key>
 				<string>YES</string>
 				<key>MARKETING_VERSION</key>
-				<string>1.0</string>
+				<string>2.0</string>
 				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
 				<string>org.jinse.timeline.tests</string>
 				<key>PRODUCT_NAME</key>

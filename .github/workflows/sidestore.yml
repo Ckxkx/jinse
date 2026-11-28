@@ -15,11 +15,13 @@ jobs:
         run: |
           bash Scripts/xcode.sh
           xcodebuild -version
-          xcodebuild build -project Timeline.xcodeproj -scheme Timeline -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/build" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          xcodebuild build -project Timeline.xcodeproj -scheme Timeline -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/build" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
       - name: 打包并校验 IPA
         run: |
           set -eu
-          mkdir -p Payload
+          work=$(mktemp -d)
+          cd "$work"
+          mkdir Payload
           ditto "$RUNNER_TEMP/build/Build/Products/Release-iphoneos/Timeline.app" Payload/Timeline.app
           app=Payload/Timeline.app
           test "$(plutil -extract DTPlatformName raw "$app/Info.plist")" = iphoneos
@@ -31,9 +33,25 @@ jobs:
           zip -qX -D Timeline-unsigned.ipa "$app/Info.plist"
           zip -qrXy Timeline-unsigned.ipa Payload -x "$app/Info.plist"
           unzip -tq Timeline-unsigned.ipa
-          shasum -a 256 Timeline-unsigned.ipa
+          unzip -q Timeline-unsigned.ipa -d verify
+          test "$(ls -A verify)" = Payload
+          test "$(ls -A verify/Payload)" = Timeline.app
+          plist=verify/Payload/Timeline.app/Info.plist
+          plutil -lint "$plist"
+          test "$(plutil -extract CFBundleIdentifier raw "$plist")" = org.jinse.timeline
+          version=$(plutil -extract CFBundleShortVersionString raw "$plist")
+          test "$version" = 2.0
+          test "$(plutil -extract CFBundleVersion raw "$plist")" = "$GITHUB_RUN_NUMBER"
+          test "$(plutil -extract DTPlatformName raw "$plist")" = iphoneos
+          executable="verify/Payload/Timeline.app/$(plutil -extract CFBundleExecutable raw "$plist")"
+          test -x "$executable"
+          lipo "$executable" -verify_arch arm64
+          xcrun vtool -show-build "$executable" | grep -E 'platform IOS$'
+          echo "ARTIFACT=Timeline-$version-$GITHUB_RUN_NUMBER-unsigned" >> "$GITHUB_ENV"
+          mv Timeline-unsigned.ipa "$GITHUB_WORKSPACE/Timeline-unsigned.ipa"
+          shasum -a 256 "$GITHUB_WORKSPACE/Timeline-unsigned.ipa"
       - uses: actions/upload-artifact@v4
         with:
-          name: Timeline-SideStore
+          name: ${{ env.ARTIFACT }}
           path: Timeline-unsigned.ipa
           if-no-files-found: error

@@ -4,6 +4,7 @@ final class TimelineUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["--ui-test"]
         app.launch()
+        app.buttons["openTimeline"].tap()
         app.buttons["添加记录"].firstMatch.tap()
         let title = app.textFields["标题"]
         title.tap()

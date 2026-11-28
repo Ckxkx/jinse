@@ -2,7 +2,7 @@
 <h1 align="center">锦瑟 · 我的时间线</h1>
 <p align="center">锦瑟无端五十弦，一弦一柱思华年。</p>
 <p align="center">用文字、照片和地点，记一本可以按月翻阅的生活手记。</p>
-<p align="center"><a href="https://ckxkx.github.io/jinse/">打开网页版</a> · <a href="https://github.com/Ckxkx/jinse/actions/runs/46038010247/artifacts/15218991618">下载 iPhone 版</a> · <a href="https://github.com/Ckxkx/jinse/actions/workflows/sidestore.yml">构建 IPA</a></p>
+<p align="center"><a href="https://ckxkx.github.io/jinse/">打开网页版</a> · <a href="https://github.com/Ckxkx/jinse/actions/workflows/sidestore.yml">下载 iPhone 版</a> · <a href="https://github.com/Ckxkx/jinse/actions/workflows/sidestore.yml">构建 IPA</a></p>
 
 ## 翻阅手记
 
@@ -10,7 +10,7 @@
 
 | 想做什么 | 怎样操作 |
 | --- | --- |
-| 留下片刻 | 点中央加号，写个标题即可保存。也可以附上正文、照片、地点和标签。 |
+| 留下片刻 | 从首页进入「我的时间线」，点右上角加号，写个标题即可保存。也可以附上正文、照片、地点和标签。 |
 | 补记往事 | 保存前选好日期，时间线会翻到记录所在的月份。 |
 | 找回一篇 | 按月份和标签筛选，或搜索标题、正文、地点。日历中的圆点表示当天有记录。 |
 | 整理记录 | 打开详情后编辑、移除照片或删除整篇。删除需再次确认。 |
@@ -27,7 +27,7 @@
 
 ### 用 SideStore 安装
 
-1. 在 iPhone 上登录 GitHub，下载页面顶部的 IPA 压缩包。
+1. 在 iPhone 上登录 GitHub，打开页面顶部的 iPhone 下载入口，选择最近成功的运行，在 Artifacts 下载 Timeline-SideStore。
 2. 在「文件」中轻点 ZIP 解压，得到 **Timeline-unsigned.ipa**。
 3. 打开已配置好的 SideStore，进入 **My Apps → ＋**，选择 IPA 完成签名和安装。
 

@@ -52,6 +52,7 @@ import UniformTypeIdentifiers
     }
 }
 struct Settings:View {
+    @AppStorage("appearance") private var appearance="system"
     @ObservedObject var book:Library
     @ObservedObject var sync:SyncController
     let importOnOpen:Bool
@@ -68,6 +69,13 @@ struct Settings:View {
     var body:some View {
         NavigationStack{
             Form {
+                Section("外观") {
+                    Picker("显示模式", selection:$appearance) {
+                        Text("跟随系统").tag("system")
+                        Text("浅色").tag("light")
+                        Text("深色").tag("dark")
+                    }.pickerStyle(.segmented)
+                }
                 Section("设备与备份"){
                     Text(sync.state(book))
                     Button("导出完整备份（未加密）"){export()}

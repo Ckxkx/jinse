@@ -12,6 +12,8 @@ struct Home:View {
     @StateObject private var sync=SyncController()
     @State private var query=""
     @State private var scope:StateTag?
+    @AppStorage("appearance") private var appearance = "system"
+    @State private var opened = false
     @State private var search=false
     @State private var settings=false
     @State private var create=false
@@ -23,6 +25,33 @@ struct Home:View {
     var shown:[Moment] { book.items.filter { !$0.deleted && (scope==nil || scope==$0.status) && (query.isEmpty || [$0.title,$0.body,$0.place].contains { $0.localizedCaseInsensitiveContains(query) }) } }
     var body:some View {
         NavigationStack {
+            DirectoryHome(book:book, settings:{ settings=true }) { filter, keyword in
+                scope=filter
+                query=keyword
+                search = !keyword.isEmpty
+                opened=true
+            }
+            .navigationDestination(isPresented:$opened){ timeline }
+        }
+            .sheet(isPresented:$create){Composer(initial:nil,book:book)}
+            .sheet(item:$selected){item in Detail(item:item,book:book)}
+            .sheet(item:$asset){Viewer(asset:$0,dir:book.media)}
+            .sheet(isPresented:$settings,onDismiss:{importing=false}){Settings(book:book,sync:sync,importOnOpen:importing)}
+            .alert("操作未完成",isPresented:Binding(get:{!book.error.isEmpty},set:{_ in book.error=""})){Button("好") {}} message:{Text(book.error)}
+        .preferredColorScheme(appearance=="dark" ? .dark : appearance=="light" ? .light:nil)
+        .tint(accent).task{
+            await book.start(context)
+            #if DEBUG
+            if CommandLine.arguments.contains("--preview-data"),CommandLine.arguments.contains("--ui-test"),book.items.isEmpty {
+                do{try book.replace(await Samples.make(in:book.media))}catch{book.error=error.localizedDescription}
+            }
+            #endif
+            sync.schedule(book)
+        }
+        .onChange(of:book.items){_,_ in sync.schedule(book)}
+        .onChange(of:phase){_,new in if new == .active {sync.schedule(book)} }
+    }
+    private var timeline:some View {
             VStack(spacing:0) {
                 HStack {
                     Text("我的时间线").font(.title2.bold())
@@ -62,22 +91,6 @@ struct Home:View {
             }.background(paper).overlay(alignment:.bottomTrailing) {
                 if book.ready { Button {create=true} label:{Image(systemName:"plus").font(.title2).frame(width:52,height:52).background(accent,in:Circle()).foregroundStyle(.white)}.accessibilityLabel("添加记录").padding() }
             }
-            .sheet(isPresented:$create){Composer(initial:nil,book:book)}
-            .sheet(item:$selected){item in Detail(item:item,book:book)}
-            .sheet(item:$asset){Viewer(asset:$0,dir:book.media)}
-            .sheet(isPresented:$settings,onDismiss:{importing=false}){Settings(book:book,sync:sync,importOnOpen:importing)}
-            .alert("操作未完成",isPresented:Binding(get:{!book.error.isEmpty},set:{_ in book.error=""})){Button("好") {}} message:{Text(book.error)}
-        }.tint(accent).task{
-            await book.start(context)
-            #if DEBUG
-            if CommandLine.arguments.contains("--preview-data"),CommandLine.arguments.contains("--ui-test"),book.items.isEmpty {
-                do{try book.replace(await Samples.make(in:book.media))}catch{book.error=error.localizedDescription}
-            }
-            #endif
-            sync.schedule(book)
-        }
-        .onChange(of:book.items){_,_ in sync.schedule(book)}
-        .onChange(of:phase){_,new in if new == .active {sync.schedule(book)} }
     }
 }
 struct RowIdentity:Identifiable {

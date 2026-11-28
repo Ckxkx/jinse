@@ -48,9 +48,11 @@ final class NoRedirect:NSObject,URLSessionTaskDelegate,@unchecked Sendable {
 }
 struct DAV {
     let root:URL, login:Login
+    let transport:URLSession
     static let session=URLSession(configuration:.ephemeral,delegate:NoRedirect(),delegateQueue:nil)
     static let head="b41f89f7-2c31-46d3-99a4-6a65e93fa406"
-    init(_ login:Login)throws {
+    init(_ login:Login,transport:URLSession = DAV.session)throws {
+        self.transport=transport
         guard var url=URL(string:login.server),url.scheme?.lowercased()=="https",url.host != nil,url.user==nil,url.password==nil,url.query==nil,url.fragment==nil else{throw Problem("请输入完整的 HTTPS WebDAV 地址。")}
         for part in login.folder.split(separator:"/"){guard part != "." && part != ".." else{throw Problem("远端目录无效。")};url.appendPathComponent(String(part),isDirectory:true)}
         self.root=url;self.login=login
@@ -59,7 +61,7 @@ struct DAV {
         var r=URLRequest(url:name.isEmpty ? root:root.appending(path:name));r.httpMethod=method;r.httpBody=data;r.timeoutInterval=90
         r.setValue("Basic "+Data((login.user+":"+login.password).utf8).base64EncodedString(),forHTTPHeaderField:"Authorization")
         for (key,value) in headers{r.setValue(value,forHTTPHeaderField:key)}
-        let (body,response)=try await Self.session.data(for:r)
+        let (body,response)=try await transport.data(for:r)
         guard let h=response as? HTTPURLResponse else{throw Problem("服务响应无效。")}
         guard (200..<300).contains(h.statusCode)||allowed.contains(h.statusCode) else{
             switch h.statusCode {
@@ -106,6 +108,12 @@ struct DAV {
             }catch{try? files.removeItem(at:remote.folder);throw error}
             try? files.removeItem(at:remote.folder)
         }
+        // Verify conditional writes on an isolated object before publishing a snapshot.
+        let probe=UUID().uuidString
+        _=try await call("PUT",probe,data:Data(),headers:["If-None-Match":"*"])
+        let (_,probeResponse)=try await call("PUT",probe,data:Data(),headers:["If-Match":"\"nonexistent-epoch\""],allowed:[412])
+        _=try await call("DELETE",probe)
+        guard probeResponse.statusCode==412 else{throw Problem("服务端忽略 If-Match，无法安全处理并发写入。")}
         try Archive.write(merged,media:media,to:archive)
         let total=try files.attributesOfItem(atPath:archive.path)[.size] as? NSNumber
         let input=try FileHandle(forReadingFrom:archive);defer{try? input.close()}

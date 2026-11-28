@@ -29,7 +29,7 @@ import UniformTypeIdentifiers
     }
     func schedule(_ book:Library){
         pending?.cancel()
-        guard enabled,book.ready,!busy,!login.server.isEmpty else{return}
+        guard !CommandLine.arguments.contains("--ui-test"),ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1",enabled,book.ready,!busy,!login.server.isEmpty else{return}
         pending=Task{try? await Task.sleep(for:.seconds(2));guard !Task.isCancelled else{return};await run(book)}
     }
     func run(_ book:Library) async {
@@ -79,30 +79,13 @@ struct Settings:View {
                     let added=batch.items.filter{!records.contains($0.record)}.count
                     let clash=batch.items.filter{incoming in book.items.contains{v in v.record==incoming.record && v.id != incoming.id && !v.ancestors.contains(incoming.id) && !incoming.ancestors.contains(v.id)}}.count
                     Section("导入预览"){
-                        Text("新增 "+String(added)+" · 重复 "+String(duplicates)+" · 冲突 "+String(clash)+" · 损坏 0")
+                        Text("新增 \(added) · 重复 \(duplicates) · 冲突 \(clash) · 损坏 0")
                         Button("合并到此设备"){apply(batch,replace:false)}
                         Button("用备份替换整库",role:.destructive){confirmReplace=true}
                         Button("取消导入"){clear()}
                     }
                 }
-                Section("加密同步"){
-                    Text(sync.state(book)+" · 待同步 "+String(sync.count(book))+" 条")
-                    if let last=sync.last{Text("最近成功："+last.formatted(date:.abbreviated,time:.shortened)).font(.footnote)}
-                    DisclosureGroup("WebDAV 连接与加密口令",isExpanded:$advanced){
-                        TextField("HTTPS 服务地址",text:$config.server).textInputAutocapitalization(.never).keyboardType(.URL)
-                        TextField("远端目录",text:$config.folder)
-                        TextField("服务器账号",text:$config.user).textInputAutocapitalization(.never)
-                        SecureField("服务器密码",text:$config.password)
-                        Text("服务器密码用于登录。独立的加密口令在本设备解锁手记，新设备需要相同口令。").font(.footnote)
-                        SecureField("独立加密口令",text:$config.phrase)
-                        Button("测试连接"){Task{working="正在连接…";defer{working=""};do{let dav=try DAV(config);try await dav.prepare();note="连接成功。请设置加密口令后保存。"}catch{note=error.localizedDescription}}}
-                        Button("保存配置"){do{try sync.configure(config);note="配置已存入钥匙串。"}catch{note=error.localizedDescription}}
-                    }
-                    Toggle("自动同步",isOn:$sync.enabled).onChange(of:sync.enabled){_,_ in sync.schedule(book)}
-                    Button("立即同步"){Task{await sync.run(book)}}
-                    if sync.busy{ProgressView(sync.progress)}
-                    if !sync.failure.isEmpty{Text(sync.failure).foregroundStyle(.red)}
-                }
+                syncSection
                 if !conflicts.isEmpty{Section("同步冲突 · 选择保留的版本"){ForEach(conflicts){v in
                     VStack(alignment:.leading){Text(v.heading);Text(v.body);Text(v.deleted ? "已删除":v.status.rawValue);Button("保留此版本"){book.resolve(v)}}
                 }}}
@@ -124,6 +107,26 @@ struct Settings:View {
             }
             .confirmationDialog("先备份当前整库，再替换？",isPresented:$confirmReplace,titleVisibility:.visible){Button("创建快照并替换",role:.destructive){if let batch{apply(batch,replace:true)}}}
         }
+    }
+    var syncSection:some View {
+                Section("加密同步"){
+                    Text(sync.state(book)+" · 待同步 "+String(sync.count(book))+" 条")
+                    if let last=sync.last{Text("最近成功："+last.formatted(date:.abbreviated,time:.shortened)).font(.footnote)}
+                    DisclosureGroup("WebDAV 连接与加密口令",isExpanded:$advanced){
+                        TextField("HTTPS 服务地址",text:$config.server).textInputAutocapitalization(.never).keyboardType(.URL)
+                        TextField("远端目录",text:$config.folder)
+                        TextField("服务器账号",text:$config.user).textInputAutocapitalization(.never)
+                        SecureField("服务器密码",text:$config.password)
+                        Text("服务器密码用于登录。独立的加密口令在本设备解锁手记，新设备需要相同口令。").font(.footnote)
+                        SecureField("独立加密口令",text:$config.phrase)
+                        Button("测试连接"){Task{working="正在连接…";defer{working=""};do{let dav=try DAV(config);try await dav.prepare();note="连接成功。请设置加密口令后保存。"}catch{note=error.localizedDescription}}}
+                        Button("保存配置"){do{try sync.configure(config);note="配置已存入钥匙串。"}catch{note=error.localizedDescription}}
+                    }
+                    Toggle("自动同步",isOn:$sync.enabled).onChange(of:sync.enabled){_,_ in sync.schedule(book)}
+                    Button("立即同步"){Task{await sync.run(book)}}
+                    if sync.busy{ProgressView(sync.progress)}
+                    if !sync.failure.isEmpty{Text(sync.failure).foregroundStyle(.red)}
+                }
     }
     func clear(){if let batch{try? files.removeItem(at:batch.folder)};batch=nil}
     func read(_ url:URL){

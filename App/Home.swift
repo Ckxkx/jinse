@@ -5,7 +5,10 @@ let accent=Color("JournalAccent")
 let paper=Color("JournalPaper")
 struct Home:View {
     @Environment(\.modelContext) var context
-    @StateObject private var book=Library(root:CommandLine.arguments.contains("--ui-test") ? URL.temporaryDirectory.appending(path:UUID().uuidString):URL.applicationSupportDirectory.appending(path:"JournalV2"))
+    @StateObject private var book:Library
+    init(book:Library?=nil){
+        _book=StateObject(wrappedValue:book ?? Library(root:CommandLine.arguments.contains("--ui-test") ? URL.temporaryDirectory.appending(path:UUID().uuidString):URL.applicationSupportDirectory.appending(path:"JournalV2")))
+    }
     @StateObject private var sync=SyncController()
     @State private var query=""
     @State private var scope:StateTag?
@@ -45,7 +48,8 @@ struct Home:View {
                     let rows=shown
                     ScrollView {
                         LazyVStack(spacing:0) {
-                            ForEach(Array(rows.enumerated()),id:\.element.recordIdentity) { index,item in
+                            ForEach(timelineRows(rows)) { row in
+                                let index=row.index,item=row.item
                                 let first=index==0 || !Calendar.current.isDate(rows[index-1].date,inSameDayAs:item.date)
                                 TimelineRow(item:item,first:first,firstRow:index==0,lastRow:index==rows.count-1,
                                             nextDay:index+1<rows.count && !Calendar.current.isDate(rows[index+1].date,inSameDayAs:item.date),
@@ -63,12 +67,30 @@ struct Home:View {
             .sheet(item:$asset){Viewer(asset:$0,dir:book.media)}
             .sheet(isPresented:$settings,onDismiss:{importing=false}){Settings(book:book,sync:sync,importOnOpen:importing)}
             .alert("操作未完成",isPresented:Binding(get:{!book.error.isEmpty},set:{_ in book.error=""})){Button("好") {}} message:{Text(book.error)}
-        }.tint(accent).task{await book.start(context);sync.schedule(book)}
+        }.tint(accent).task{
+            await book.start(context)
+            #if DEBUG
+            if CommandLine.arguments.contains("--preview-data"),CommandLine.arguments.contains("--ui-test"),book.items.isEmpty {
+                do{try book.replace(await Samples.make(in:book.media))}catch{book.error=error.localizedDescription}
+            }
+            #endif
+            sync.schedule(book)
+        }
         .onChange(of:book.items){_,_ in sync.schedule(book)}
         .onChange(of:phase){_,new in if new == .active {sync.schedule(book)} }
     }
 }
-extension Moment { var recordIdentity:UUID { id } }
+struct RowIdentity:Identifiable {
+    let id:UUID
+    let index:Int
+    let item:Moment
+}
+func timelineRows(_ items:[Moment])->[RowIdentity]{
+    let counts=Dictionary(grouping:items,by:\.record)
+    return items.enumerated().map { offset,item in
+        RowIdentity(id:counts[item.record]?.count==1 ? item.record:item.id,index:offset,item:item)
+    }
+}
 struct TimelineRow:View {
     let item:Moment
     let first:Bool, firstRow:Bool,lastRow:Bool,nextDay:Bool
@@ -106,7 +128,7 @@ struct TimelineRow:View {
             }
         }
     }
-    var title:some View { Button(action:open){Text(item.heading).font(.headline).multilineTextAlignment(.leading)}.buttonStyle(.plain) }
+    var title:some View { Button(action:open){Text(item.title.isEmpty ? item.body:item.title).font(item.title.isEmpty ? .body:.headline).multilineTextAlignment(.leading)}.buttonStyle(.plain) }
     var status:some View { Menu { ForEach(StateTag.allCases,id:\.self){s in Button {change(s)} label:{Label(s.rawValue,systemImage:s.icon)} } } label:{Label(item.status.rawValue,systemImage:item.status.icon).font(.caption).foregroundStyle(accent)} }
 }
 struct Gallery:View {

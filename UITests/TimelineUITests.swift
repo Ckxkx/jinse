@@ -9,3 +9,17 @@ final class TimelineUITests:XCTestCase {
         app.buttons["Weekend walk"].tap();XCTAssertTrue(app.buttons["编辑"].exists)
     }
 }
+
+extension TimelineUITests {
+    func testLargeTextDarkTimeline(){
+        let app=XCUIApplication()
+        app.launchArguments=["--ui-test","--preview-data","-AppleInterfaceStyle","Dark","-UIPreferredContentSizeCategoryName","UICTContentSizeCategoryAccessibilityXL"]
+        app.launchArguments += ["--compact-preview"]
+        app.launch()
+        let first=app.buttons["趁潮水退去之前，把环岛路最后一段也走完"]
+        XCTAssertTrue(first.waitForExistence(timeout:20))
+        let shot=XCTAttachment(screenshot:app.screenshot());shot.name="紧凑宽度 · 深色 · 辅助字号";shot.lifetime = .keepAlways;add(shot)
+        first.tap()
+        XCTAssertTrue(app.buttons["返回"].exists)
+    }
+}

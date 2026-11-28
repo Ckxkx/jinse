@@ -33,7 +33,11 @@ enum Journal {
 @main struct TimelineApp: App {
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            Home().frame(maxWidth:CommandLine.arguments.contains("--compact-preview") ? 375:nil).environment(\.locale, Locale(identifier: "zh_CN"))
+            #else
             Home().environment(\.locale, Locale(identifier: "zh_CN"))
+            #endif
         }.modelContainer(for: [Entry.self, SeedMarker.self], inMemory: CommandLine.arguments.contains("--ui-test"), isAutosaveEnabled: false)
     }
 }

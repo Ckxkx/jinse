@@ -92,11 +92,11 @@ struct Detail:View {
     var body:some View {
         NavigationStack{
             ScrollView{VStack(alignment:.leading,spacing:18){
-                Text(current.heading).font(.title2.bold())
+                if !current.title.isEmpty { Text(current.title).font(.title2.bold()) }
                 Label(current.status.rawValue,systemImage:current.status.icon)
                 Text(current.date.formatted(date:.long,time:.shortened)).font(.subheadline).foregroundStyle(.secondary)
                 if !current.place.isEmpty{Text(current.place)}
-                if !current.title.isEmpty && !current.body.isEmpty{Text(current.body).textSelection(.enabled)}
+                if !current.body.isEmpty{Text(current.body).textSelection(.enabled)}
                 Gallery(media:current.media,dir:book.media){preview=$0}
                 Button("删除记录",role:.destructive){deleting=true}
             }.padding().frame(maxWidth:.infinity,alignment:.leading)}.background(paper)

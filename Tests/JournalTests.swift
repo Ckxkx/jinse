@@ -36,3 +36,40 @@ final class JournalTests:XCTestCase {
         XCTAssertThrowsError(try Vault.open(Data(blob.dropLast()),key:other,name:"fixture"))
     }
 }
+
+extension JournalTests {
+    @MainActor func testRealMixedMediaRestartAndLegacyRecovery() async throws {
+        let root=try tempFolder();defer{try? files.removeItem(at:root)}
+        let container=try ModelContainer(for:Entry.self,SeedMarker.self,configurations:ModelConfiguration(isStoredInMemoryOnly:true))
+        let old=Entry("旧手记",date:Journal.october(12),place:"厦门",photos:["sample-sea"])
+        old.bodyText="海边的栈道";container.mainContext.insert(old);try container.mainContext.save()
+        let book=Library(root:root);await book.start(container.mainContext)
+        XCTAssertTrue(book.ready,book.error)
+        XCTAssertEqual(book.items.first?.body,old.bodyText)
+        let snapshot=try Archive.read(book.snapshot);defer{try? files.removeItem(at:snapshot.folder)}
+        XCTAssertEqual(snapshot.items,book.items)
+        var sample=try await Samples.make(in:book.media)[0]
+        sample.date=Calendar.current.date(byAdding:.day,value:-1,to:Date())!
+        sample.status = .paused
+        try book.save(sample)
+        let again=Library(root:root);await again.start(container.mainContext)
+        let saved=try XCTUnwrap(again.items.first{$0.id==sample.id})
+        XCTAssertEqual(saved,sample)
+        for asset in saved.media {
+            let original=again.media.appending(path:asset.file)
+            let frame=try await MediaIO.thumbnail(original,video:asset.video)
+            XCTAssertGreaterThan(frame.size.width,0)
+            if asset.video{XCTAssertGreaterThan(asset.duration,0)}
+        }
+        var edit=saved.revised();edit.status = .done;edit.date=Date();try again.save(edit)
+        XCTAssertEqual(again.items.first,edit)
+        let exported=root.appending(path:"空白还原.jinse");try Archive.write(again.items,media:again.media,to:exported)
+        let destination=try tempFolder();defer{try? files.removeItem(at:destination)}
+        let empty=Library(root:destination);try files.createDirectory(at:empty.media,withIntermediateDirectories:true)
+        let batch=try Archive.read(exported);defer{try? files.removeItem(at:batch.folder)}
+        try batch.install(in:empty.media)
+        for _ in 0..<2{try empty.replace(History.merge(empty.items,batch.items))}
+        XCTAssertEqual(empty.items,again.items)
+        XCTAssertEqual(try digest(empty.media.appending(path:edit.media.last!.file)),String(edit.media.last!.file.prefix(64)))
+    }
+}

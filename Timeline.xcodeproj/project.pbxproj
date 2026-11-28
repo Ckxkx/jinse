@@ -62,6 +62,8 @@
 				<string>17.0</string>
 				<key>SDKROOT</key>
 				<string>iphoneos</string>
+				<key>SWIFT_ACTIVE_COMPILATION_CONDITIONS</key>
+				<string>$(inherited) DEBUG</string>
 				<key>SWIFT_OPTIMIZATION_LEVEL</key>
 				<string>-Onone</string>
 			</dict>

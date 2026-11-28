@@ -1,12 +1,17 @@
 <!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><title>我的时间线 · 锦瑟</title><link rel="stylesheet" href="./style.css">
 <body>
-<aside class="rail"><div class="identity"><span>锦瑟手记</span><button id="find" aria-label="搜索" aria-expanded="false"></button></div>
-<nav aria-label="页面导航"><button id="timeline">时间线</button><button id="calendar">日历</button><button id="add" aria-label="添加记录"><span aria-hidden="true">＋</span><b>添加记录</b></button></nav>
-<section class="archive"><h2>月份归档</h2><div id="archives"></div></section></aside>
-<main><header class="mast"><h1 id="heading">我的时间线</h1></header>
+<header class="sitebar"><a href="#home" class="wordmark"><span aria-hidden="true">锦</span>锦瑟手记</a><nav class="site-nav" aria-label="页面导航"><a href="#home">首页</a><a id="timeline" href="#timeline">时间线</a><a id="calendar" href="#calendar">日历</a></nav></header>
+<main>
+<section id="landing">
+<h1>首页</h1>
+<a href="#timeline" class="cover"><div><h2>我的时间线</h2><span id="homeCount"></span><span class="cover-action">翻阅手记 →</span></div><div id="coverPhoto"></div></a>
+<section aria-labelledby="latest"><h2 id="latest">最近事件</h2><div id="recent"></div></section>
+</section>
+<section id="journal" hidden>
+<header class="mast"><h1 id="heading">我的时间线</h1><div class="actions"><button id="find" aria-label="搜索" aria-expanded="false"></button><button id="add" aria-label="添加事件" title="添加事件">＋</button></div></header>
 <input hidden id="query" type="search" placeholder="搜索标题、正文或地点" aria-label="搜索内容">
 <div class="tools"><label class="month-control"><span id="monthName"></span><input aria-label="选择月份" id="month" type="month"></label><span id="total"></span><div id="tags" role="group" aria-label="记录标签"></div></div>
-<section hidden id="grid" aria-label="月历"></section><section id="rows" aria-label="本月记录"></section></main>
+<section hidden id="grid" aria-label="月历"></section><section id="rows" aria-label="本月记录"></section></section></main>
 <dialog id="editor" aria-labelledby="editorTitle"><form id="form"><div class="bar"><button type="button" id="cancel">取消</button><strong id="editorTitle">添加记录</strong><button class="save">保存</button></div><div class="fields"><label>标题<input name="title" required placeholder="记录的标题"></label><label>正文<textarea name="body" rows="5" placeholder="写下今天的故事…"></textarea></label><div id="preview"></div><label class="attach">＋ 添加照片<input id="files" type="file" accept="image/*" multiple></label><label>日期<input name="date" type="date" required></label><label>地点<input name="place" placeholder="填写地点"></label><label>标签<select name="tag"><option>日常</option><option>旅行</option></select></label><p id="error" role="alert"></p></div></form></dialog>
 <dialog id="detail" aria-label="记录详情"><div class="bar"><button id="close">返回</button><strong>记录详情</strong><button id="edit">编辑</button></div><article id="story"></article><button class="delete" id="del">删除记录</button></dialog>
 <script type="module" src="./app.js"></script></body></html>

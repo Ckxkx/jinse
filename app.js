@@ -45,19 +45,33 @@ async function refresh(){
 }
 function reset(){tag='全部';day='';$('query').value=''}
 function render(){
+  const route=location.hash.slice(1)
+  const home=!['timeline','calendar'].includes(route)
+  calendar=route==='calendar'
+  $('landing').hidden=!home
+  $('journal').hidden=home
+  for(const link of document.querySelectorAll('.site-nav a')){
+    if(link.hash===(home?'#home':location.hash))link.setAttribute('aria-current','page')
+    else link.removeAttribute('aria-current')
+  }
+  $('homeCount').textContent='共 '+entries.length+' 篇手记'
+  const cover=entries.find(e=>e.photos.length)
+  $('coverPhoto').replaceChildren(...(cover?[picture(cover.photos[0])]:[]))
+  $('coverPhoto').hidden=!cover
+  $('recent').replaceChildren(...entries.slice(0,5).map(e=>{
+    const row=button('',()=>show(e),'recent-row')
+    const copy=node('div')
+    copy.append(node('strong',e.title),node('small',[e.date,e.place].filter(Boolean).join(' · ')))
+    row.append(copy,node('span','›'))
+    return row
+  }))
+  if(!entries.length)$('recent').append(node('p','进入时间线，点右下角「添加事件」写下第一篇手记。'))
   $('month').value=month
   try{localStorage.setItem('jinse-month',month)}catch{}
   const monthly=entries.filter(e=>e.date.startsWith(month+'-'))
   const [year,number]=month.split('-')
   $('monthName').textContent=year+' 年 '+Number(number)+' 月'
   $('total').textContent=monthly.length+' 篇'
-  const months=[...new Set([month,...entries.map(e=>e.date.slice(0,7))])].sort().reverse()
-  $('archives').replaceChildren(...months.map(key=>{
-    const [y,m]=key.split('-')
-    const link=button(y+' 年 '+Number(m)+' 月',()=>{month=key;day='';render()},month===key?'active':'')
-    link.append(node('span',String(entries.filter(e=>e.date.startsWith(key)).length)))
-    return link
-  }))
   $('heading').textContent=calendar?'手记日历':'我的时间线'
   $('calendar').classList.toggle('on',calendar);$('timeline').classList.toggle('on',!calendar)
   $('tags').replaceChildren(...['全部','旅行','日常'].map(t=>{const b=button(t,()=>{tag=t;render()},t===tag?'on':'');b.setAttribute('aria-pressed',String(t===tag));return b}))
@@ -97,7 +111,7 @@ function render(){
   }
   if(!filtered.length){
     const box=node('div',undefined,'empty')
-    box.append(node('p',monthly.length?'没有匹配的记录':'这个月还没有记录'),monthly.length?button('清除条件',()=>{reset();render()}):button('添加记录',()=>compose(null)))
+    box.append(node('p',monthly.length?'没有匹配的记录':'这个月还没有记录'),monthly.length?button('清除条件',()=>{reset();render()}):node('small','点右下角「添加事件」写下第一篇手记。'))
     rows.append(box)
   }
 }
@@ -143,7 +157,7 @@ form.onsubmit=async event=>{
   try{
     const id=current?.id||crypto.randomUUID()
     await access('readwrite',s=>s.put({...data,id,photos:[...photos]}))
-    month=data.date.slice(0,7);calendar=false;reset();$('editor').close();await refresh()
+    month=data.date.slice(0,7);location.hash='timeline';day='';reset();$('editor').close();await refresh()
     const saved=document.querySelector('[data-entry-id="'+CSS.escape(id)+'"]')
     saved?.scrollIntoView({block:'nearest'});saved?.classList.add('just-saved')
   }catch{$('error').textContent='保存失败，请检查浏览器剩余空间后重试。'}
@@ -160,8 +174,7 @@ $('add').onclick=()=>compose(null)
 $('month').onchange=e=>{if(e.target.value){month=e.target.value;day='';render()}}
 $('find').onclick=()=>{const q=$('query');q.hidden=!q.hidden;$('find').setAttribute('aria-expanded',String(!q.hidden));if(q.hidden){q.value='';render()}else q.focus()}
 $('query').oninput=render
-$('timeline').onclick=()=>{calendar=false;day='';render()}
-$('calendar').onclick=()=>{calendar=true;render()}
+window.addEventListener('hashchange',()=>{day='';render();window.scrollTo(0,0)})
 window.addEventListener('focus',()=>{if(!$('editor').open&&!$('detail').open)refresh()})
 await refresh()
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{})

@@ -129,3 +129,8 @@ input,textarea,select{background:var(--tile);color:var(--ink)}
 #tags .on{background:var(--pill);color:var(--ink);box-shadow:none}
 .entry .snippet,.delete,#error{color:var(--muted)}
 .entry:before{background:var(--muted)}
+.collection-icon{width:48px;height:48px;object-fit:cover}
+.topic-banner{position:relative;isolation:isolate;overflow:hidden;border-radius:16px;height:clamp(175px,26vw,258px);margin-bottom:22px;color:white;background:#262626}
+#coverImage,.topic-banner:after{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2}
+.topic-banner:after{content:"";z-index:-1;background:linear-gradient(transparent,#000b)}
+.topic-brand{position:absolute;left:18px;bottom:15px}.topic-brand img{width:50px;height:50px;border-radius:12px}.topic-brand h2{margin:3px 0 0;font-size:24px}.cover-picker{position:absolute;bottom:18px;right:14px;border-radius:20px;padding:6px 13px;color:white;background:#0009;font-size:13px;overflow:hidden}.cover-picker input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}

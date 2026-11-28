@@ -13,10 +13,21 @@ const seed=[
   {id:'cafe',date:'2026-10-12',title:'周末的咖啡馆',place:'杭州 · 天目里',tag:'日常',body:'',photos:['./cafe.png']}
 ]
 const db=await new Promise((resolve,reject)=>{
-  const req=indexedDB.open('jinse-journal-v1',1)
+  const req=indexedDB.open('jinse-journal-v1',2)
   req.onupgradeneeded=()=>{
-    const s=req.result.createObjectStore('entries',{keyPath:'id'})
-    seed.forEach(e=>s.add(e))
+    const db=req.result
+    const fresh=!db.objectStoreNames.contains('entries')
+    const s=fresh?db.createObjectStore('entries',{keyPath:'id'}):req.transaction.objectStore('entries')
+    if(fresh)seed.forEach(e=>s.add(e))
+    db.createObjectStore('covers')
+    const samples=[
+      ['独立开发日志','画出第一版首页','删掉重复的入口，给手记本身多留一点空间。','已完成'],
+      ['独立开发日志','打磨离线体验','在地铁上记了一段话，准备到站后检查保存结果。','未完成'],
+      ['独立开发日志','搁置桌面小组件','先把手机上的阅读体验做好。','暂时挂起'],
+      ['海岸散步','走到白城沙滩','退潮后沿着潮线慢慢走，捡到一枚有细纹的贝壳。','已完成'],
+      ['海岸散步','再去一次灯塔','想在傍晚同一个位置拍下涨潮后的样子。','未完成']]
+    samples.forEach(([topic,title,body,status],i)=>s.add({id:'topic-example-'+i,topic,title,body,status,date:'2026-11-'+(20+i),tag:i<3?'日常':'旅行',place:'',photos:[]}))
+
   }
   req.onsuccess=()=>resolve(req.result)
   req.onerror=()=>reject(req.error)
@@ -28,7 +39,9 @@ function access(mode,op){
     tx.onabort=()=>reject(tx.error)
   })
 }
-let statusScope=''
+let topic=localStorage.getItem('jinse-topic')||'生活手记'
+const topicOf=e=>e.topic?.trim()||'生活手记'
+const mark=t=>'./mark-'+({'独立开发日志':'build','海岸散步':'coast'}[t]||'life')+'.png'
 const statusOf=entry=>entry.status || '未完成'
 let entries=[],month='2026-10',tag='全部',day='',calendar=false,current=null,photos=[]
 try{month=localStorage.getItem('jinse-month')||month}catch{}
@@ -45,7 +58,7 @@ async function refresh(){
   for(const [blob,url] of urls){URL.revokeObjectURL(url);urls.delete(blob)}
   render()
 }
-function reset(){statusScope='';tag='全部';day='';$('query').value=''}
+function reset(){tag='全部';day='';$('query').value=''}
 function render(){
   const route=location.hash.slice(1)
   const home=!['timeline','calendar'].includes(route)
@@ -57,14 +70,14 @@ function render(){
     else link.removeAttribute('aria-current')
   }
   document.body.classList.toggle('directory',home)
-  if(home) renderDirectory()
+  if(home) renderDirectory();else if(bannerTopic!==topic)loadCover(topic)
   $('month').value=month
   try{localStorage.setItem('jinse-month',month)}catch{}
-  const monthly=entries.filter(e=>e.date.startsWith(month+'-'))
+  const monthly=entries.filter(e=>topicOf(e)===topic && e.date.startsWith(month+'-'))
   const [year,number]=month.split('-')
   $('monthName').textContent=year+' 年 '+Number(number)+' 月'
   $('total').textContent=monthly.length+' 篇'
-  $('heading').textContent=calendar?'手记日历':statusScope || '我的时间线'
+  $('heading').textContent=calendar?'手记日历':'事件'
   $('calendar').classList.toggle('on',calendar);$('timeline').classList.toggle('on',!calendar)
   $('tags').replaceChildren(...['全部','旅行','日常'].map(t=>{const b=button(t,()=>{tag=t;render()},t===tag?'on':'');b.setAttribute('aria-pressed',String(t===tag));return b}))
   const grid=$('grid');grid.hidden=!calendar;grid.replaceChildren()
@@ -80,7 +93,7 @@ function render(){
   }
   const q=$('query').value.trim().toLocaleLowerCase()
   const source=q && !calendar ? entries:monthly
-  const filtered=source.filter(e=>(!statusScope || statusOf(e)===statusScope)&&(tag==='全部'||e.tag===tag)&&(!day||e.date===day)&&[e.title,e.body,e.place].some(s=>s.toLocaleLowerCase().includes(q)))
+  const filtered=source.filter(e=>topicOf(e)===topic&&(tag==='全部'||e.tag===tag)&&(!day||e.date===day)&&[e.title,e.body,e.place].some(s=>s.toLocaleLowerCase().includes(q)))
   const rows=$('rows');rows.replaceChildren()
   let previous=''
   for(const e of filtered){
@@ -104,7 +117,7 @@ function render(){
   }
   if(!filtered.length){
     const box=node('div',undefined,'empty')
-    box.append(node('p',(monthly.length||q||statusScope)?'没有匹配的记录':'这个月还没有记录'),(monthly.length||q||statusScope)?button('清除条件',()=>{reset();render()}):node('small','点右下角「添加事件」写下第一篇手记。'))
+    box.append(node('p',(monthly.length||q)?'没有匹配的记录':'这个月还没有记录'),(monthly.length||q)?button('清除条件',()=>{reset();render()}):node('small','点右下角「添加事件」写下第一篇手记。'))
     rows.append(box)
   }
 }
@@ -122,6 +135,7 @@ function preview(){
 function compose(e){
   current=e;photos=[...(e?.photos||[])];form.reset()
   for(const n of ['title','body','date','place','status','tag'])field(n).value=e?.[n]??({date:day||today(),tag:'日常',status:'未完成'}[n]||'')
+  field('topic').value=e?topicOf(e):topic
   $('editorTitle').textContent=e?'编辑记录':'添加记录';$('error').textContent=''
   preview()
   const editor=$('editor')
@@ -150,6 +164,7 @@ form.onsubmit=async event=>{
   try{
     const id=current?.id||crypto.randomUUID()
     await access('readwrite',s=>s.put({...data,id,photos:[...photos]}))
+    topic=topicOf(data);localStorage.setItem('jinse-topic',topic)
     month=data.date.slice(0,7);location.hash='timeline';day='';reset();$('editor').close();await refresh()
     const saved=document.querySelector('[data-entry-id="'+CSS.escape(id)+'"]')
     saved?.scrollIntoView({block:'nearest'});saved?.classList.add('just-saved')
@@ -169,20 +184,46 @@ $('find').onclick=()=>{const q=$('query');q.hidden=!q.hidden;$('find').setAttrib
 $('query').oninput=render
 window.addEventListener('hashchange',()=>{day='';render();window.scrollTo(0,0)})
 window.addEventListener('focus',()=>{if(!$('editor').open&&!$('detail').open)refresh()})
-const collectionDefinitions=[
-  ['','全部记录','≋'],['未完成','未完成','○'],['暂时挂起','暂时挂起','Ⅱ'],['已完成','已完成','✓']
-]
+let coverURL=''
+let bannerTopic=''
+async function loadCover(title){
+  bannerTopic=title
+  $('topicName').textContent=title
+  $('topicMark').src=mark(title)
+  const fallback=title==='海岸散步'?'./coast.jpg':'./coffee.jpg'
+  $('coverImage').src=fallback
+  const req=db.transaction('covers').objectStore('covers').get(title)
+  req.onsuccess=()=>{
+    if(bannerTopic!==title)return
+    if(coverURL)URL.revokeObjectURL(coverURL)
+    coverURL=req.result?URL.createObjectURL(req.result):''
+    $('coverImage').src=coverURL||fallback
+  }
+}
+$('pickCover').onchange=async event=>{
+  const file=event.target.files[0],name=topic
+  if(!file)return
+  try{
+    const url=URL.createObjectURL(file),image=new Image()
+    try{image.src=url;await image.decode()}finally{URL.revokeObjectURL(url)}
+    const tx=db.transaction('covers','readwrite')
+    tx.objectStore('covers').put(file,name)
+    tx.oncomplete=()=>{if(name===topic)loadCover(name)}
+    tx.onabort=()=>alert('封面保存失败，请检查存储空间。')
+  }catch{alert('无法读取图片，请重新选择。')}
+  event.target.value=''
+}
 function renderDirectory(){
   const term=$('directoryQuery').value.trim().toLocaleLowerCase()
   const rows=[]
-  for(const [scope,title,symbol] of collectionDefinitions){
+  for(const title of [...new Set([...entries.map(topicOf),'生活手记'])].sort()){
     const titleMatches=term && title.includes(term)
-    const records=entries.filter(e=>(!scope||statusOf(e)===scope) &&
+    const records=entries.filter(e=>topicOf(e)===title &&
       (!term||titleMatches||[e.title,e.body,e.place].some(value=>value.toLocaleLowerCase().includes(term))))
     if(term && !titleMatches && !records.length) continue
     const row=button('',()=>{
       reset()
-      statusScope=scope
+      topic=title;localStorage.setItem('jinse-topic',topic)
       if(records.length && !records.some(e=>e.date.startsWith(month+'-'))) month=records[0].date.slice(0,7)
       const query=$('query')
       query.value=titleMatches?'':term
@@ -191,7 +232,7 @@ function renderDirectory(){
       location.hash='timeline'
       render()
     },'collection')
-    const icon=node('span',symbol,'collection-icon')
+    const icon=node('img',undefined,'collection-icon');icon.alt='';icon.src=mark(title)
     icon.setAttribute('aria-hidden','true')
     const copy=node('span',undefined,'collection-copy')
     let count=records.length+' 个节点'

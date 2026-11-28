@@ -40,7 +40,6 @@ struct Home: View {
                     Text(calendar ? "日历" : "时间线").font(.headline)
                     Spacer()
                     Button { searching.toggle(); query = "" } label: { Image(systemName: "magnifyingglass") }.accessibilityLabel("搜索")
-                    Button { adding = true } label: { Image(systemName:"plus").frame(minWidth:38,minHeight:44) }.accessibilityLabel("添加记录")
                 }
                 if searching { TextField("搜索标题、正文或地点", text: $query).textFieldStyle(.roundedBorder) }
                 HStack {
@@ -61,7 +60,7 @@ struct Home: View {
                         ContentUnavailableView {
                             Label(monthly.isEmpty ? "这个月还没有记录" : "没有匹配的记录", systemImage: "book")
                         } description: { EmptyView() } actions: {
-                            if monthly.isEmpty { Text("点右上角加号，写下第一件事。").font(.footnote) } else { Button("清除条件") { reset() } }
+                            if monthly.isEmpty { Text("点右下角加号，写下第一件事。").font(.footnote) } else { Button("清除条件") { reset() } }
                         }
                     }
                     LazyVStack(spacing: 0) {
@@ -88,11 +87,17 @@ struct Home: View {
                 }
             }.padding(.horizontal,20).padding(.top,12).background(paper)
             .safeAreaInset(edge:.bottom) {
-                HStack {
-                    Button("时间线") { calendar = false; day = nil }
-                    Spacer()
-                    Button("日历") { calendar = true }
-                }.padding(.horizontal,40).padding(.vertical,6).background(paper)
+                VStack(alignment:.trailing,spacing:4) {
+                    Button { adding = true } label: {
+                        Image(systemName:"plus").font(.title2.weight(.medium)).frame(width:52,height:52)
+                            .background(pine,in:Circle()).foregroundStyle(.white)
+                    }.accessibilityLabel("添加记录").padding(.trailing,18)
+                    HStack {
+                        Button("时间线") { calendar = false; day = nil }
+                        Spacer()
+                        Button("日历") { calendar = true }
+                    }.padding(.horizontal,40).padding(.vertical,6)
+                }.background(paper)
             }
             }
             }
@@ -121,7 +126,7 @@ struct Home: View {
                     }.padding(22).background(pine,in:RoundedRectangle(cornerRadius:12)).foregroundStyle(.white)
                 }.accessibilityIdentifier("openTimeline")
                 Text("最近事件").font(.headline)
-                if entries.isEmpty { Text("进入时间线，点右上角加号添加事件。").foregroundStyle(.secondary) }
+                if entries.isEmpty { Text("进入时间线，点右下角加号添加事件。").foregroundStyle(.secondary) }
                 ForEach(Array(entries.prefix(5))) { entry in
                     NavigationLink {
                         Detail(entry:entry,reveal:reveal)

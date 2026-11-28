@@ -28,6 +28,8 @@ function access(mode,op){
     tx.onabort=()=>reject(tx.error)
   })
 }
+let statusScope=''
+const statusOf=entry=>entry.status || '未完成'
 let entries=[],month='2026-10',tag='全部',day='',calendar=false,current=null,photos=[]
 try{month=localStorage.getItem('jinse-month')||month}catch{}
 const urls=new Map()
@@ -43,7 +45,7 @@ async function refresh(){
   for(const [blob,url] of urls){URL.revokeObjectURL(url);urls.delete(blob)}
   render()
 }
-function reset(){tag='全部';day='';$('query').value=''}
+function reset(){statusScope='';tag='全部';day='';$('query').value=''}
 function render(){
   const route=location.hash.slice(1)
   const home=!['timeline','calendar'].includes(route)
@@ -54,25 +56,15 @@ function render(){
     if(link.hash===(home?'#home':location.hash))link.setAttribute('aria-current','page')
     else link.removeAttribute('aria-current')
   }
-  $('homeCount').textContent='共 '+entries.length+' 篇手记'
-  const cover=entries.find(e=>e.photos.length)
-  $('coverPhoto').replaceChildren(...(cover?[picture(cover.photos[0])]:[]))
-  $('coverPhoto').hidden=!cover
-  $('recent').replaceChildren(...entries.slice(0,5).map(e=>{
-    const row=button('',()=>show(e),'recent-row')
-    const copy=node('div')
-    copy.append(node('strong',e.title),node('small',[e.date,e.place].filter(Boolean).join(' · ')))
-    row.append(copy,node('span','›'))
-    return row
-  }))
-  if(!entries.length)$('recent').append(node('p','进入时间线，点右下角「添加事件」写下第一篇手记。'))
+  document.body.classList.toggle('directory',home)
+  if(home) renderDirectory()
   $('month').value=month
   try{localStorage.setItem('jinse-month',month)}catch{}
   const monthly=entries.filter(e=>e.date.startsWith(month+'-'))
   const [year,number]=month.split('-')
   $('monthName').textContent=year+' 年 '+Number(number)+' 月'
   $('total').textContent=monthly.length+' 篇'
-  $('heading').textContent=calendar?'手记日历':'我的时间线'
+  $('heading').textContent=calendar?'手记日历':statusScope || '我的时间线'
   $('calendar').classList.toggle('on',calendar);$('timeline').classList.toggle('on',!calendar)
   $('tags').replaceChildren(...['全部','旅行','日常'].map(t=>{const b=button(t,()=>{tag=t;render()},t===tag?'on':'');b.setAttribute('aria-pressed',String(t===tag));return b}))
   const grid=$('grid');grid.hidden=!calendar;grid.replaceChildren()
@@ -87,7 +79,8 @@ function render(){
     }
   }
   const q=$('query').value.trim().toLocaleLowerCase()
-  const filtered=monthly.filter(e=>(tag==='全部'||e.tag===tag)&&(!day||e.date===day)&&[e.title,e.body,e.place].some(s=>s.toLocaleLowerCase().includes(q)))
+  const source=q && !calendar ? entries:monthly
+  const filtered=source.filter(e=>(!statusScope || statusOf(e)===statusScope)&&(tag==='全部'||e.tag===tag)&&(!day||e.date===day)&&[e.title,e.body,e.place].some(s=>s.toLocaleLowerCase().includes(q)))
   const rows=$('rows');rows.replaceChildren()
   let previous=''
   for(const e of filtered){
@@ -95,7 +88,7 @@ function render(){
     b.dataset.entryId=e.id
     const info=node('div',undefined,'entry')
     const excerpt=e.body.trim()
-    const meta=node('span',[e.place,e.tag].filter(Boolean).join(' · '),'meta')
+    const meta=node('span',[e.place,statusOf(e),e.tag].filter(Boolean).join(' · '),'meta')
     info.append(node('h2',e.title))
     if(e.photos.length){
       info.classList.add('with-photo')
@@ -111,7 +104,7 @@ function render(){
   }
   if(!filtered.length){
     const box=node('div',undefined,'empty')
-    box.append(node('p',monthly.length?'没有匹配的记录':'这个月还没有记录'),monthly.length?button('清除条件',()=>{reset();render()}):node('small','点右下角「添加事件」写下第一篇手记。'))
+    box.append(node('p',(monthly.length||q||statusScope)?'没有匹配的记录':'这个月还没有记录'),(monthly.length||q||statusScope)?button('清除条件',()=>{reset();render()}):node('small','点右下角「添加事件」写下第一篇手记。'))
     rows.append(box)
   }
 }
@@ -128,7 +121,7 @@ function preview(){
 }
 function compose(e){
   current=e;photos=[...(e?.photos||[])];form.reset()
-  for(const n of ['title','body','date','place','tag'])field(n).value=e?.[n]??({date:day||today(),tag:'日常'}[n]||'')
+  for(const n of ['title','body','date','place','status','tag'])field(n).value=e?.[n]??({date:day||today(),tag:'日常',status:'未完成'}[n]||'')
   $('editorTitle').textContent=e?'编辑记录':'添加记录';$('error').textContent=''
   preview()
   const editor=$('editor')
@@ -176,5 +169,68 @@ $('find').onclick=()=>{const q=$('query');q.hidden=!q.hidden;$('find').setAttrib
 $('query').oninput=render
 window.addEventListener('hashchange',()=>{day='';render();window.scrollTo(0,0)})
 window.addEventListener('focus',()=>{if(!$('editor').open&&!$('detail').open)refresh()})
+const collectionDefinitions=[
+  ['','全部记录','≋'],['未完成','未完成','○'],['暂时挂起','暂时挂起','Ⅱ'],['已完成','已完成','✓']
+]
+function renderDirectory(){
+  const term=$('directoryQuery').value.trim().toLocaleLowerCase()
+  const rows=[]
+  for(const [scope,title,symbol] of collectionDefinitions){
+    const titleMatches=term && title.includes(term)
+    const records=entries.filter(e=>(!scope||statusOf(e)===scope) &&
+      (!term||titleMatches||[e.title,e.body,e.place].some(value=>value.toLocaleLowerCase().includes(term))))
+    if(term && !titleMatches && !records.length) continue
+    const row=button('',()=>{
+      reset()
+      statusScope=scope
+      if(records.length && !records.some(e=>e.date.startsWith(month+'-'))) month=records[0].date.slice(0,7)
+      const query=$('query')
+      query.value=titleMatches?'':term
+      query.hidden=!query.value
+      $('find').setAttribute('aria-expanded',String(!query.hidden))
+      location.hash='timeline'
+      render()
+    },'collection')
+    const icon=node('span',symbol,'collection-icon')
+    icon.setAttribute('aria-hidden','true')
+    const copy=node('span',undefined,'collection-copy')
+    let count=records.length+' 个节点'
+    if(records.length){
+      const days=Math.round((Date.parse(records[0].date)-Date.parse(records.at(-1).date))/86400000)+1
+      count+=' · 跨度 '+days+' 天'
+    }
+    copy.append(node('strong',title),node('small',count))
+    row.append(icon,copy,node('span','进入','collection-action'))
+    rows.push(row)
+  }
+  $('collections').replaceChildren(...(rows.length?rows:[node('p','没有匹配的时间线','directory-empty')]))
+}
+$('directoryQuery').oninput=renderDirectory
+$('appearance').onclick=()=>$('appearanceDialog').showModal()
+$('closeAppearance').onclick=()=>$('appearanceDialog').close()
+function applyAppearance(mode){
+  document.documentElement.dataset.appearance=mode
+  for(const option of document.querySelectorAll('input[name=appearance]'))option.checked=option.value===mode
+}
+let theme='system'
+try{theme=localStorage.getItem('jinse-appearance')||theme}catch{}
+applyAppearance(theme)
+for(const option of document.querySelectorAll('input[name=appearance]'))option.onchange=()=>{
+  applyAppearance(option.value)
+  try{localStorage.setItem('jinse-appearance',option.value)}catch{}
+}
+const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition
+if(Recognition){
+  const mic=$('voice'),recognizer=new Recognition()
+  let listening=false
+  recognizer.lang='zh-CN'
+  mic.hidden=false
+  recognizer.onstart=()=>{listening=true;mic.setAttribute('aria-pressed','true');$('voiceFeedback').textContent='正在听写…'}
+  recognizer.onend=()=>{listening=false;mic.setAttribute('aria-pressed','false');if($('voiceFeedback').textContent==='正在听写…')$('voiceFeedback').textContent=''}
+  recognizer.onresult=event=>{$('directoryQuery').value=event.results[0][0].transcript;renderDirectory()}
+  recognizer.onerror=()=>{$('voiceFeedback').textContent='听写未完成，请检查麦克风权限或使用键盘。'}
+  mic.onclick=()=>{try{if(listening)recognizer.stop();else recognizer.start()}catch{$('voiceFeedback').textContent='请稍后重试。'}}
+  window.addEventListener('hashchange',()=>{if(listening)recognizer.abort()})
+}
 await refresh()
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{})

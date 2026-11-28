@@ -1,9 +1,9 @@
-const cacheName='jinse-shell-v6'
+const cacheName='jinse-shell-v7'
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(cacheName).then(cache=>cache.addAll(['./','./index.html','./app.js','./style.css','./coffee.jpg','./coast.jpg'])))
 })
 self.addEventListener('activate',event=>{
-  event.waitUntil(Promise.all(['jinse-shell-v1','jinse-shell-v2','jinse-shell-v3','jinse-shell-v4','jinse-shell-v5'].map(key=>caches.delete(key))))
+  event.waitUntil(Promise.all(['jinse-shell-v1','jinse-shell-v2','jinse-shell-v3','jinse-shell-v4','jinse-shell-v5','jinse-shell-v6'].map(key=>caches.delete(key))))
 })
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET'||!event.request.url.startsWith(self.registration.scope))return

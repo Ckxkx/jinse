@@ -72,3 +72,60 @@ h1{font-size:clamp(27px,4vw,40px);letter-spacing:-.035em;line-height:1.2}
 
 .actions #add{position:fixed;z-index:2;right:max(18px,env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;display:grid;place-items:center;padding:0;border-radius:50%;font:30px/1 system-ui;box-shadow:0 3px 12px #16392b26}
 #journal{padding-bottom:74px}
+
+/* Monochrome appearance and the same directory structure as the iPhone app. */
+:root{
+  color-scheme:light dark;
+  --paper:light-dark(#fff,#000);
+  --ink:light-dark(#151515,#f5f5f5);
+  --pine:var(--ink);
+  --muted:light-dark(#626262,#a1a1a1);
+  --line:light-dark(#dadada,#303030);
+  --rail:light-dark(#f7f7f7,#141414);
+  --tile:light-dark(#f3f3f3,#1a1a1a);
+  --pill:light-dark(#e7e7e7,#2d2d2d);
+  --glass:light-dark(#f0f0f0b8,#252525b8);
+  --highlight:light-dark(#ffffffc9,#ffffff25);
+}
+:root[data-appearance=light]{color-scheme:light}
+:root[data-appearance=dark]{color-scheme:dark}
+[hidden]{display:none!important}
+body.directory .sitebar{display:none}
+body.directory main{width:min(540px,100%);padding:22px 16px 96px}
+.directory-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}
+.directory-header h1{font-size:34px;font-weight:700;letter-spacing:-.04em}
+.glass{background:var(--glass);border:1px solid var(--line);box-shadow:inset 0 1px var(--highlight),0 4px 18px #0002;backdrop-filter:blur(22px) saturate(0);-webkit-backdrop-filter:blur(22px) saturate(0)}
+.profile{width:38px;height:38px;border-radius:50%;font-weight:650}
+.directory-label{margin:0 12px 12px;color:var(--muted);font-size:15px;font-weight:500}
+.directory-list{display:grid;gap:12px}
+.collection{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center;text-align:left;padding:12px 16px;background:var(--tile);border-radius:16px;color:var(--ink)}
+.collection-icon{display:grid;place-items:center;background:linear-gradient(150deg,var(--pill),var(--rail));box-shadow:inset 0 1px var(--highlight);height:48px;border-radius:12px;font-size:23px}
+.collection-copy strong,.collection-copy small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.collection-copy strong{font-size:17px;font-weight:650}
+.collection-copy small{color:var(--muted);font-size:13px}
+.collection-action{background:var(--pill);border-radius:999px;padding:6px 16px;font-size:14px;font-weight:650}
+.collection:hover,.collection:active{background:var(--pill)}
+.collection:active{transform:scale(.98)}
+@media(prefers-reduced-motion:reduce){.collection:active{transform:none}}
+.directory-search{position:fixed;z-index:3;bottom:calc(12px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(508px,calc(100% - 32px));display:flex;align-items:center;gap:12px;border-radius:999px;min-height:46px;padding:0 15px}
+.directory-search input{border:0;background:transparent;min-width:0;flex:1;padding:8px 0;font-size:16px}
+.directory-search input::placeholder{color:var(--muted)}
+.search-symbol{width:13px;height:13px;border:1.6px solid var(--muted);border-radius:50%;position:relative}
+.search-symbol:after{content:"";width:6px;height:1.6px;background:var(--muted);position:absolute;left:8px;top:9px;transform:rotate(45deg)}
+#voice{width:32px;height:42px;position:relative;color:var(--muted)}
+#voice:before{content:"";position:absolute;top:9px;left:12px;width:6px;height:12px;border:1.5px solid;border-radius:7px}
+#voice:after{content:"";position:absolute;left:9px;top:16px;width:12px;height:10px;border:1.5px solid;border-top:0;border-radius:0 0 9px 9px}
+#voice[aria-pressed=true]{color:var(--ink);background:var(--pill);border-radius:999px}
+#voiceFeedback{position:fixed;bottom:calc(55px + env(safe-area-inset-bottom));color:var(--ink);background:var(--tile);padding:4px 10px;border-radius:6px}
+#voiceFeedback:empty{display:none}
+#appearanceDialog{height:auto;max-width:min(360px,calc(100% - 32px));inset:0;margin:auto;border:1px solid var(--line);border-radius:16px}
+#appearanceDialog fieldset{display:grid;gap:12px;border:0;padding:16px}
+#appearanceDialog label{display:flex;align-items:center;gap:10px}
+.directory-empty{padding:12px;color:var(--muted)}
+.site-nav [aria-current=page]{box-shadow:inset 0 -2px var(--ink)}
+.wordmark span,#add,.actions #add,.empty button,.save{background:var(--ink);color:var(--paper)}
+input,textarea,select{background:var(--tile);color:var(--ink)}
+#tags,.on,#grid .on{background:var(--tile);color:var(--ink)}
+#tags .on{background:var(--pill);color:var(--ink);box-shadow:none}
+.entry .snippet,.delete,#error{color:var(--muted)}
+.entry:before{background:var(--muted)}

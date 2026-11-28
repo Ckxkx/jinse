@@ -12,9 +12,10 @@ struct Composer:View {
     @State private var busy=false
     @State private var message=""
     @State private var discard=false
-    init(initial:Moment?,book:Library){
+    init(initial:Moment?,book:Library,topic:String="生活手记"){
         self.initial=initial;self.book=book
-        let value=initial ?? Moment()
+        var value=initial ?? Moment()
+        if initial==nil{value.topic=topic}
         _draft=State(initialValue:value);_fresh=State(initialValue:value)
     }
     func directory(_ a:Attachment)->URL { if let staging,files.fileExists(atPath:staging.appending(path:a.file).path){return staging};return book.media }
@@ -22,6 +23,7 @@ struct Composer:View {
         NavigationStack {
             Form {
                 Section {
+                    TextField("所属时间线",text:Binding(get:{draft.topic ?? "生活手记"},set:{draft.topic=$0}))
                     TextField("小标题",text:$draft.title,axis:.vertical)
                     TextField("写下当时的事…",text:$draft.body,axis:.vertical).lineLimit(4...18)
                 }

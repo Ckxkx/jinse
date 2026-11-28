@@ -24,7 +24,7 @@ private struct CollectionPress:ButtonStyle {
 struct DirectoryHome:View {
     @ObservedObject var book:Library
     let settings:()->Void
-    let enter:(StateTag?,String)->Void
+    let enter:(String,String)->Void
     @Environment(\.colorScheme) private var scheme
     @Environment(\.scenePhase) private var phase
     @FocusState private var focused:Bool
@@ -33,12 +33,11 @@ struct DirectoryHome:View {
     private var colors:DirectoryPalette { DirectoryPalette(dark:scheme == .dark) }
     private var records:[Moment] { book.items.filter{!$0.deleted} }
     private struct GroupRow:Identifiable {
-        let scope:StateTag?
         let title:String
         let icon:String
         let records:[Moment]
         let query:String
-        var id:String {scope?.rawValue ?? "all"}
+        var id:String {title}
         var metadata:String {
             guard let first=records.first,let last=records.last else{return "0 个节点"}
             let cal=Calendar.current
@@ -48,18 +47,14 @@ struct DirectoryHome:View {
     }
     private var groups:[GroupRow] {
         let all=records,term=keyword.trimmingCharacters(in:.whitespacesAndNewlines)
-        let definitions:[(StateTag?,String,String)]=[
-            (nil,"全部记录","point.3.connected.trianglepath.dotted"),
-            (.open,"未完成","circle.dotted"),
-            (.paused,"暂时挂起","pause.fill"),
-            (.done,"已完成","checkmark")]
-        return definitions.compactMap { scope,title,icon in
+        let titles=Set(all.map(\.topicName)).union(["生活手记"]).sorted()
+        return titles.compactMap { title in
             let named=title.localizedCaseInsensitiveContains(term)
             let items=all.filter { item in
-                (scope==nil || item.status==scope) && (term.isEmpty || named || [item.title,item.body,item.place].contains{$0.localizedCaseInsensitiveContains(term)})
+                item.topicName==title && (term.isEmpty || named || [item.title,item.body,item.place].contains{$0.localizedCaseInsensitiveContains(term)})
             }
             guard term.isEmpty || named || !items.isEmpty else{return nil}
-            return GroupRow(scope:scope,title:title,icon:icon,records:items,query:named ? "":term)
+            return GroupRow(title:title,icon:TopicDesign.icon(title),records:items,query:named ? "":term)
         }
     }
     var body:some View {
@@ -82,11 +77,10 @@ struct DirectoryHome:View {
                     LazyVStack(spacing:12){
                         ForEach(groups){ row in
                             Button {
-                                voice.stop();focused=false;enter(row.scope,row.query)
+                                voice.stop();focused=false;enter(row.title,row.query)
                             } label:{
                                 HStack(spacing:12){
-                                    Image(systemName:row.icon).font(.title3.weight(.semibold)).foregroundStyle(colors.foreground)
-                                        .frame(width:48,height:48).background(colors.pill.gradient,in:RoundedRectangle(cornerRadius:12,style:.continuous))
+                                    Image(row.icon).resizable().frame(width:48,height:48).clipShape(RoundedRectangle(cornerRadius:12))
                                     VStack(alignment:.leading,spacing:3){
                                         Text(row.title).font(.body.weight(.semibold)).lineLimit(1)
                                         Text(row.metadata).font(.footnote).foregroundStyle(colors.secondary)

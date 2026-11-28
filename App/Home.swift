@@ -11,6 +11,7 @@ struct Home:View {
     }
     @StateObject private var sync=SyncController()
     @State private var query=""
+    @State private var topic="生活手记"
     @State private var scope:StateTag?
     @AppStorage("appearance") private var appearance = "system"
     @State private var opened = false
@@ -22,18 +23,18 @@ struct Home:View {
     @State private var asset:Attachment?
     @Environment(\.scenePhase) var phase
     @ScaledMetric(relativeTo:.caption) var column:CGFloat=62
-    var shown:[Moment] { book.items.filter { !$0.deleted && (scope==nil || scope==$0.status) && (query.isEmpty || [$0.title,$0.body,$0.place].contains { $0.localizedCaseInsensitiveContains(query) }) } }
+    var shown:[Moment] { book.items.filter { !$0.deleted && $0.topicName==topic && (scope==nil || scope==$0.status) && (query.isEmpty || [$0.title,$0.body,$0.place].contains { $0.localizedCaseInsensitiveContains(query) }) } }
     var body:some View {
         NavigationStack {
             DirectoryHome(book:book, settings:{ settings=true }) { filter, keyword in
-                scope=filter
+                topic=filter;scope=nil
                 query=keyword
                 search = !keyword.isEmpty
                 opened=true
             }
             .navigationDestination(isPresented:$opened){ timeline }
         }
-            .sheet(isPresented:$create){Composer(initial:nil,book:book)}
+            .sheet(isPresented:$create){Composer(initial:nil,book:book,topic:topic)}
             .sheet(item:$selected){item in Detail(item:item,book:book)}
             .sheet(item:$asset){Viewer(asset:$0,dir:book.media)}
             .sheet(isPresented:$settings,onDismiss:{importing=false}){Settings(book:book,sync:sync,importOnOpen:importing)}
@@ -53,8 +54,9 @@ struct Home:View {
     }
     private var timeline:some View {
             VStack(spacing:0) {
+                TopicBanner(title:topic,root:book.root).id(topic)
                 HStack {
-                    Text("我的时间线").font(.title2.bold())
+                    Text("事件").font(.headline)
                     Spacer()
                     Button { search.toggle(); if !search { query="" } } label:{Image(systemName:"magnifyingglass")}.accessibilityLabel("搜索")
                     Menu { Button("全部状态"){scope=nil};ForEach(StateTag.allCases,id:\.self){ s in Button(s.rawValue){scope=s} } } label:{Image(systemName:scope==nil ? "line.3.horizontal.decrease.circle":"line.3.horizontal.decrease.circle.fill")}.accessibilityLabel("筛选状态")
@@ -68,7 +70,7 @@ struct Home:View {
                     ContentUnavailableView {
                         Label(book.items.allSatisfy(\.deleted) ? "从此刻开始" : "没有匹配的记录",systemImage:"book.pages")
                     } description:{ Text(book.items.allSatisfy(\.deleted) ? "记下今天做过的事，以及想留下的片刻。" : "试试其他关键词或状态。") } actions:{
-                        if book.items.allSatisfy(\.deleted) {
+                        if !book.items.contains(where:{!$0.deleted && $0.topicName==topic}) {
                             Button("写下第一条记录"){create=true}
                             Button("导入已有数据"){importing=true;settings=true}
                         } else { Button("清除条件"){query="";scope=nil} }

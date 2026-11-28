@@ -2,7 +2,7 @@ import XCTest
 final class TimelineUITests:XCTestCase {
     func testAddFromEmptyTimeline(){
         let app=XCUIApplication();app.launchArguments=["--ui-test"];app.launch()
-        app.buttons["collection.all"].tap()
+        app.buttons["collection.生活手记"].tap()
         app.buttons["写下第一条记录"].tap()
         app.textFields["小标题"].tap();app.textFields["小标题"].typeText("Weekend walk")
         app.buttons["暂时挂起"].tap();app.buttons["保存"].tap()
@@ -18,7 +18,7 @@ extension TimelineUITests {
         app.launchArguments += ["--compact-preview"]
         app.launch()
         let homeShot=XCTAttachment(screenshot:app.screenshot());homeShot.name="暗色卡片首页";homeShot.lifetime = .keepAlways;add(homeShot)
-        app.buttons["collection.all"].tap()
+        app.buttons["collection.生活手记"].tap()
         let first=app.buttons["趁潮水退去之前，把环岛路最后一段也走完"]
         XCTAssertTrue(first.waitForExistence(timeout:20))
         let shot=XCTAttachment(screenshot:app.screenshot());shot.name="紧凑宽度 · 深色 · 辅助字号";shot.lifetime = .keepAlways;add(shot)
@@ -40,7 +40,7 @@ extension TimelineUITests {
         app.buttons["个人设置"].tap()
         app.buttons["深色"].tap()
         app.buttons["完成"].tap()
-        XCTAssertTrue(app.buttons["collection.all"].waitForExistence(timeout:5))
+        XCTAssertTrue(app.buttons["collection.生活手记"].waitForExistence(timeout:5))
         let shot=XCTAttachment(screenshot:app.screenshot());shot.lifetime = .keepAlways;shot.name="深色首页";add(shot)
     }
 }

@@ -20,6 +20,8 @@ struct Attachment: Codable, Equatable, Hashable, Identifiable {
 }
 struct Moment: Identifiable, Codable, Equatable {
     var id = UUID() // revision, also the identity of a conflict alternative
+    var topic:String?
+    var topicName:String { let value=topic?.trimmingCharacters(in:.whitespacesAndNewlines) ?? "";return value.isEmpty ? "生活手记":value }
     var record = UUID()
     var ancestors: Set<UUID> = []
     var title = "", body = "", place = "", legacyTag = ""
@@ -105,6 +107,14 @@ func digest(_ url: URL) throws -> String {
                     guard restored == converted else { throw Problem("迁移备份校验失败。") }
                 }
                 try replace(converted)
+            }
+            if root == URL.applicationSupportDirectory.appending(path:"JournalV2") {
+                let marker=root.appending(path:"topics-introduced")
+                if !files.fileExists(atPath:marker.path){
+                    let examples=TopicDesign.examples.filter { sample in !items.contains{$0.record==sample.record} }
+                    try replace(items+examples)
+                    try Data().write(to:marker,options:.atomic)
+                }
             }
             ready=true
         } catch { self.error=error.localizedDescription }

@@ -95,7 +95,7 @@ struct TimelineRow:View {
                 if !item.title.isEmpty && !item.body.isEmpty { Button(action:open){Text(item.body).font(.body).multilineTextAlignment(.leading)}.buttonStyle(.plain) }
                 if !item.media.isEmpty { Gallery(media:item.media,dir:dir,preview:preview) }
             }.frame(maxWidth:.infinity,alignment:.leading)
-        }.padding(.bottom:lastRow ? 0 : (nextDay ? 32:16))
+        }.padding(.bottom,lastRow ? 0 : (nextDay ? 32:16))
         .background(alignment:.topLeading){
             GeometryReader { g in
                 Path { p in

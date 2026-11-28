@@ -48,10 +48,9 @@ final class SyncTests:XCTestCase {
         let dav=try DAV(config,transport:session)
         let a=try tempFolder(),b=try tempFolder()
         defer{try? files.removeItem(at:a);try? files.removeItem(at:b)}
-        var start=Moment();start.body="写下海风和潮声"
-        let raw=a.appending(path:"original");try Data("original image bytes".utf8).write(to:raw)
-        let file=try digest(raw)+".jpg";try files.moveItem(at:raw,to:a.appending(path:file))
-        start.media=[Attachment(file:file,video:false,duration:0,ratio:1)]
+        let start=try await Samples.make(in:a)[0]
+        let file=try XCTUnwrap(start.media.last?.file)
+        XCTAssertTrue(start.media.contains(where: \.video))
         let one=try await dav.exchange(items:[start],media:a){_ in};defer{try? files.removeItem(at:one.folder)}
         let two=try await dav.exchange(items:[],media:b){_ in};defer{try? files.removeItem(at:two.folder)}
         try two.install(in:b);XCTAssertEqual(two.items,[start]);XCTAssertEqual(try digest(b.appending(path:file)),String(file.prefix(64)))

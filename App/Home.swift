@@ -97,7 +97,6 @@ struct TimelineRow:View {
     let column:CGFloat,dir:URL
     let open:()->Void,preview:(Attachment)->Void,change:(StateTag)->Void
     @ScaledMetric(relativeTo:.headline) var axis:CGFloat=12
-    @Environment(\.dynamicTypeSize) var type
     var body:some View {
         HStack(alignment:.top,spacing:0) {
             VStack(alignment:.trailing,spacing:3) {
@@ -114,7 +113,7 @@ struct TimelineRow:View {
                     HStack(alignment:.firstTextBaseline){title.fixedSize();status.fixedSize()}
                     VStack(alignment:.leading,spacing:5){title;status}
                 }
-                if !item.title.isEmpty && !item.body.isEmpty { Button(action:open){Text(item.body).font(.body).multilineTextAlignment(.leading)}.buttonStyle(.plain) }
+                if !item.title.isEmpty && !item.body.isEmpty { Button(action:open){Text(item.body).font(.body).multilineTextAlignment(.leading)}.buttonStyle(JournalPress()) }
                 if !item.media.isEmpty { Gallery(media:item.media,dir:dir,preview:preview) }
             }.frame(maxWidth:.infinity,alignment:.leading)
         }.padding(.bottom,lastRow ? 0 : (nextDay ? 32:16))
@@ -128,13 +127,22 @@ struct TimelineRow:View {
             }
         }
     }
-    var title:some View { Button(action:open){Text(item.title.isEmpty ? item.body:item.title).font(item.title.isEmpty ? .body:.headline).multilineTextAlignment(.leading)}.buttonStyle(.plain) }
+    var title:some View { Button(action:open){Text(item.title.isEmpty ? item.body:item.title).font(item.title.isEmpty ? .body:.headline).multilineTextAlignment(.leading)}.buttonStyle(JournalPress()) }
     var status:some View { Menu { ForEach(StateTag.allCases,id:\.self){s in Button {change(s)} label:{Label(s.rawValue,systemImage:s.icon)} } } label:{Label(item.status.rawValue,systemImage:item.status.icon).font(.caption).foregroundStyle(accent)} }
 }
 struct Gallery:View {
     let media:[Attachment],dir:URL,preview:(Attachment)->Void
     var body:some View {
-        if media.count==1,let a=media.first {Button {preview(a)} label:{Tile(asset:a,dir:dir).aspectRatio(CGFloat(a.ratio),contentMode:.fit)}.buttonStyle(.plain)}
-        else { LazyVGrid(columns:[GridItem(.adaptive(minimum:76))],spacing:5){ForEach(media){a in Button {preview(a)} label:{Tile(asset:a,dir:dir).aspectRatio(1,contentMode:.fit)}.buttonStyle(.plain)}} }
+        if media.count==1,let a=media.first {Button {preview(a)} label:{Tile(asset:a,dir:dir).aspectRatio(CGFloat(a.ratio),contentMode:.fit)}.buttonStyle(JournalPress())}
+        else { LazyVGrid(columns:[GridItem(.adaptive(minimum:76))],spacing:5){ForEach(media){a in Button {preview(a)} label:{Tile(asset:a,dir:dir).aspectRatio(1,contentMode:.fit)}.buttonStyle(JournalPress())}} }
+    }
+}
+
+struct JournalPress:ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func makeBody(configuration:Configuration)->some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.72:1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985:1)
     }
 }

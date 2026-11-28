@@ -30,17 +30,20 @@ import UniformTypeIdentifiers
     func schedule(_ book:Library){
         pending?.cancel()
         guard !CommandLine.arguments.contains("--ui-test"),ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1",enabled,book.ready,!busy,!login.server.isEmpty else{return}
-        pending=Task{try? await Task.sleep(for:.seconds(2));guard !Task.isCancelled else{return};await run(book)}
+        pending=Task{try? await Task.sleep(for:.seconds(2));guard !Task.isCancelled else{return};pending=nil;await run(book)}
     }
     func run(_ book:Library) async {
         guard !busy,book.ready else{return}
         busy=true;failure="";progress="读取并校验远端版本…"
-        defer{busy=false;progress=""}
+        defer {
+            busy=false;progress=""
+            if failure.isEmpty && count(book)>0 {schedule(book)}
+        }
         do {
             let client=try DAV(login),items=book.items,media=book.media
             let batch=try await client.exchange(items:items,media:media){ value in Task{@MainActor in self.progress=value} }
             defer{try? files.removeItem(at:batch.folder)}
-            try batch.install(in:media)
+            try await Task.detached { try batch.install(in:media) }.value
             try book.replace(History.merge(book.items,batch.items))
             known=Set(batch.items.map{$0.id.uuidString});last=Date()
             UserDefaults.standard.set(Array(known),forKey:"knownRevisions");UserDefaults.standard.set(last,forKey:"lastSync")
@@ -73,13 +76,8 @@ struct Settings:View {
                     if files.fileExists(atPath:book.snapshot.path){Button("打开上次恢复快照"){read(book.snapshot)}}
                 }
                 if let batch{
-                    let known=Set(book.items.map(\.id))
-                    let records=Set(book.items.map(\.record))
-                    let duplicates=batch.items.filter{known.contains($0.id)}.count
-                    let added=batch.items.filter{!records.contains($0.record)}.count
-                    let clash=batch.items.filter{incoming in book.items.contains{v in v.record==incoming.record && v.id != incoming.id && !v.ancestors.contains(incoming.id) && !incoming.ancestors.contains(v.id)}}.count
                     Section("导入预览"){
-                        Text("新增 \(added) · 重复 \(duplicates) · 冲突 \(clash) · 损坏 0")
+                        ImportSummary(local:book.items,incoming:batch.items)
                         Button("合并到此设备"){apply(batch,replace:false)}
                         Button("用备份替换整库",role:.destructive){confirmReplace=true}
                         Button("取消导入"){clear()}
@@ -155,5 +153,29 @@ struct Settings:View {
             try book.replace(replace ? input.items:History.merge(items,input.items))
             clear();note="导入完成，已保存到此设备。"
         }catch{note=error.localizedDescription}}
+    }
+}
+
+private struct ImportSummary:View {
+    let local:[Moment],incoming:[Moment]
+    private var groups:[String:[Moment]] {
+        let versions=Dictionary(grouping:local,by:\.record)
+        return Dictionary(grouping:incoming){ item in
+            guard let existing=versions[item.record] else{return "新增"}
+            if existing.contains(where:{$0.id==item.id || $0.ancestors.contains(item.id)}){return "重复"}
+            return existing.allSatisfy{item.ancestors.contains($0.id)} ? "更新":"冲突"
+        }
+    }
+    var body:some View {
+        let summary=groups
+        ForEach(["新增","更新","重复","冲突","损坏"],id:\.self) { label in
+            let records=summary[label,default:[]]
+            if records.isEmpty {Text("\(label) 0").foregroundStyle(.secondary)}
+            else {
+                DisclosureGroup("\(label) \(records.count)") {
+                    ForEach(records){item in VStack(alignment:.leading){Text(item.heading);Text(item.date,style:.date).font(.caption)}}
+                }
+            }
+        }
     }
 }
